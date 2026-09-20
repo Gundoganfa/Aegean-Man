@@ -50,6 +50,14 @@
 
           <div class="final-score"><span>YOUR SCORE</span><strong id="finalScore">00000</strong></div>
 
+          <div class="score-submit">
+            <label>YOUR NAME
+              <input id="leaderboardName" maxlength="16" autocomplete="nickname" spellcheck="false" placeholder="PLAYER" />
+            </label>
+            <button id="saveScoreBtn" class="primary-action">SAVE SCORE</button>
+            <span id="scoreSaveStatus" aria-live="polite"></span>
+          </div>
+
           <ol id="leaderboardList" class="leaderboard-list">
             <li class="leaderboard-loading">Loading leaderboard…</li>
           </ol>
