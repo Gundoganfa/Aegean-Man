@@ -14,14 +14,15 @@
       <div class="badge">ARCADE COLLECTION</div>
       <h1>CHOOSE YOUR <span>BOSS LEVEL</span></h1>
       <p>Two fictional arcade games. Pick a scenario and jump in.</p>
+      <div class="picker-online"><span class="online-dot"></span> ONLINE <strong data-online-count>—</strong></div>
       <div class="game-choices">
         <button class="game-choice" data-game-choice="aegean">
           <strong>AEGEAN-MAN</strong>
           <span>Maze · flags · storms · high score</span>
         </button>
         <button class="game-choice war-choice" data-game-choice="eastmed">
-          <strong>EAST MED · 60 SEC</strong>
-          <span>Defense timing · intercepts · scripted arcade events</span>
+          <strong>OPERATION GLOBAL PEACE</strong>
+          <span>60 sec · defense timing · intercepts · scripted arcade events</span>
         </button>
       </div>
       <small>Fictional arcade scenarios · not military simulations or predictions.</small>
@@ -39,7 +40,7 @@
         <div><small>HIGH</small><strong id="highScore">00000</strong></div>
         <div><small>LEVEL</small><strong id="level">01</strong></div>
         <div><small>FLAGS</small><strong id="flagsLeft">00</strong></div>
-        <div class="online-card"><small>ONLINE</small><strong id="onlinePlayers">—</strong></div>
+        <div class="online-card"><small>ONLINE</small><strong id="onlinePlayers" data-online-count>—</strong></div>
       </div>
     </header>
 
@@ -122,7 +123,7 @@
     <header class="topbar war-topbar">
       <div>
         <div class="eyebrow">FICTIONAL ARCADE SCENARIO · 60 SECONDS</div>
-        <h1>EAST MED <span>DEFENSE</span></h1>
+        <h1>OPERATION <span>GLOBAL PEACE</span></h1>
       </div>
       <div class="hud war-hud" aria-live="polite">
         <div><small>SCORE</small><strong id="warScore">00000</strong></div>
@@ -130,6 +131,7 @@
         <div><small>INTERCEPTS</small><strong id="warIntercepts">00</strong></div>
         <div><small>THREATS</small><strong id="warThreats">00</strong></div>
         <div><small>SYSTEM</small><strong id="warSystem">READY</strong></div>
+        <div class="online-card"><small>ONLINE</small><strong id="warOnlinePlayers" data-online-count>—</strong></div>
       </div>
     </header>
 
@@ -139,7 +141,7 @@
 
       <div id="warStartPanel" class="panel panel-visible">
         <div class="panel-card">
-          <div class="badge">60 SECOND ARCADE</div>
+          <div class="badge">OPERATION GLOBAL PEACE · 60 SEC</div>
           <h2>Protect the border. Beat the clock.</h2>
           <p>Incoming missiles appear at random. Press <strong>SPACE</strong> early to launch an interceptor and score before the automatic defense system takes over.</p>
           <label class="player-field">PLAYER NAME
@@ -155,7 +157,7 @@
       <div id="warLeaderboardPanel" class="panel">
         <div class="panel-card leaderboard-card">
           <div class="badge">MISSION COMPLETE</div>
-          <h2>EAST MED LEADERBOARD</h2>
+          <h2>GLOBAL PEACE LEADERBOARD</h2>
           <p>Early manual interceptions earn the most points.</p>
 
           <div class="final-score"><span>YOUR SCORE</span><strong id="warFinalScore">00000</strong></div>
@@ -183,7 +185,7 @@
     </section>
 
     <footer>
-      <span>Fictional arcade map · deliberately non-operational</span>
+      <span>Operation Global Peace · fictional arcade map · deliberately non-operational</span>
       <span>© Aegean-Man Arcade Collection</span>
     </footer>
   </main>
