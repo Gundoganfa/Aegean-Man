@@ -1,0 +1,316 @@
+(()=>{
+const c=document.getElementById('warGame');
+if(!c)return;
+const x=c.getContext('2d'),W=c.width,H=c.height;
+const $=id=>document.getElementById(id);
+
+const scoreE=$('warScore'),timeE=$('warTime'),interceptsE=$('warIntercepts'),threatsE=$('warThreats'),systemE=$('warSystem');
+const startPanel=$('warStartPanel'),leaderPanel=$('warLeaderboardPanel'),startBtn=$('warStartBtn'),msg=$('warMessage');
+const playerNameE=$('warPlayerName'),finalScoreE=$('warFinalScore'),leaderNameE=$('warLeaderboardName');
+const saveBtn=$('warSaveScoreBtn'),saveStatus=$('warScoreSaveStatus'),listE=$('warLeaderboardList'),againBtn=$('warPlayAgainBtn');
+
+let run=false,score=0,manualIntercepts=0,elapsed=0,last=0,nextThreat=2.5,runId='',scoreSaved=false;
+let incoming=[],interceptors=[],offense=[],explosions=[],ships=[],shipRockets=[],tanks=[];
+let cyprusEvent=false,shipsEvent=false,tanksEvent=false,controlEvent=false,lastShipShot=0,lastFire=-9,weaponIndex=0;
+const weapons=['BAYRAKTAR','BALLISTIC','CRUISE'];
+
+playerNameE.value=localStorage.aegeanPlayerName||'PLAYER';
+
+const turkeyPoly=[[205,155],[355,120],[535,130],[705,116],[850,150],[830,220],[740,245],[655,230],[575,260],[465,250],[360,285],[250,260],[188,213]];
+const cyprusPoly=[[690,354],[747,341],[806,356],[785,381],[718,387],[674,371]];
+const israelPoly=[[985,440],[1038,430],[1070,485],[1052,555],[1018,610],[985,580],[999,520],[972,480]];
+const turkeyTargets=[[370,215],[505,205],[655,190],[760,200],[575,235]];
+const defenseBase={x:650,y:235},mersin={x:665,y:265},israelLaunch={x:1028,y:505};
+
+const pad=(n,k=2)=>String(Math.max(0,Math.floor(n))).padStart(k,'0');
+const lerp=(a,b,t)=>a+(b-a)*t;
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const active=()=>document.body.dataset.game==='eastmed';
+
+function cleanName(v){
+  const name=String(v||'PLAYER').replace(/[^a-zA-Z0-9 _.-]/g,'').trim().slice(0,16)||'PLAYER';
+  playerNameE.value=name;leaderNameE.value=name;localStorage.aegeanPlayerName=name;return name;
+}
+
+function hud(){
+  scoreE.textContent=pad(score,5);
+  timeE.textContent=pad(Math.max(0,60-Math.floor(elapsed)),2);
+  interceptsE.textContent=pad(manualIntercepts,2);
+  threatsE.textContent=pad(incoming.filter(m=>!m.dead).length,2);
+}
+
+function note(t){
+  msg.textContent=t;msg.classList.add('show');
+  clearTimeout(note.t);note.t=setTimeout(()=>msg.classList.remove('show'),1200);
+}
+
+function addExplosion(px,py,color='#ffb45e',size=1){explosions.push({x:px,y:py,t:0,color,size})}
+
+function missilePos(m){
+  const t=m.p,cx=(m.x0+m.x1)/2+(m.arc||0),cy=Math.min(m.y0,m.y1)-165;
+  const a=(1-t)*(1-t),b=2*(1-t)*t,d=t*t;
+  return {x:a*m.x0+b*cx+d*m.x1,y:a*m.y0+b*cy+d*m.y1};
+}
+
+function spawnThreat(){
+  const t=turkeyTargets[Math.floor(Math.random()*turkeyTargets.length)];
+  incoming.push({x0:israelLaunch.x+rnd(-14,14),y0:israelLaunch.y+rnd(-8,8),x1:t[0]+rnd(-20,20),y1:t[1]+rnd(-12,12),p:0,speed:rnd(.12,.17),dead:false,auto:false});
+  note('INCOMING · SPACE FOR EARLY INTERCEPT');
+}
+
+function launchOffense(){
+  const type=weapons[weaponIndex++%weapons.length];
+  const starts={BAYRAKTAR:{x:565,y:205},BALLISTIC:{x:520,y:245},CRUISE:{x:690,y:220}};
+  const s=starts[type];
+  offense.push({type,x0:s.x,y0:s.y,x1:1018+rnd(-10,10),y1:520+rnd(-22,22),p:0,speed:type==='BAYRAKTAR'?.18:type==='BALLISTIC'?.34:.26});
+  return type;
+}
+
+function manualHit(m){
+  if(m.dead)return;
+  const pos=missilePos(m);m.dead=true;manualIntercepts++;
+  const points=Math.round(250+(1-m.p)*750);score+=points;
+  addExplosion(pos.x,pos.y,'#77edff',1.25);systemE.textContent='MANUAL';note('EARLY INTERCEPT +'+points);hud();
+}
+
+function autoHit(m){
+  if(m.dead)return;
+  const pos=missilePos(m);m.dead=true;m.auto=true;
+  addExplosion(pos.x,pos.y,'#c3d0dc',1);systemE.textContent='AUTO';note('AUTO INTERCEPT · NO SCORE');hud();
+}
+
+function fire(){
+  if(!run||!active())return;
+  const now=performance.now()/1000;if(now-lastFire<.16)return;lastFire=now;
+  const type=launchOffense();
+  const candidates=incoming.filter(m=>!m.dead&&m.p<.82).sort((a,b)=>b.p-a.p);
+  if(!candidates.length){systemE.textContent='LAUNCH';note(type+' LAUNCHED');return}
+  const target=candidates[0];
+  interceptors.push({target,t:0,duration:.28+rnd(0,.12),x0:defenseBase.x,y0:defenseBase.y});
+  systemE.textContent='MANUAL';
+}
+
+function triggerTimeline(){
+  if(!cyprusEvent&&elapsed>=10){cyprusEvent=true;note('10 SEC · CYPRUS ARCADE EVENT')}
+  if(!shipsEvent&&elapsed>=20){
+    shipsEvent=true;
+    ships=[{p:0,lane:-20},{p:0,lane:0},{p:0,lane:20}];
+    note('20 SEC · MERSIN FLEET DEPLOYED');
+  }
+  if(!tanksEvent&&elapsed>=30){
+    tanksEvent=true;
+    tanks=Array.from({length:9},(_,i)=>({p:-i*.055,lane:(i%3-1)*13}));
+    note('30 SEC · GROUND COLUMN MOVING');
+  }
+  if(!controlEvent&&elapsed>=50){controlEvent=true;note('FINAL ARCADE CONTROL PHASE')}
+}
+
+async function loadLeaderboard(){
+  try{
+    const r=await fetch('/api/leaderboard?game=eastmed',{cache:'no-store'}),data=await r.json();
+    const rows=Array.isArray(data.scores)?data.scores:[];listE.textContent='';
+    if(!rows.length){const li=document.createElement('li');li.className='leaderboard-loading';li.textContent='No scores yet. Be the first.';listE.appendChild(li);return}
+    rows.forEach((row,i)=>{
+      const li=document.createElement('li'),rank=document.createElement('span'),name=document.createElement('span'),sc=document.createElement('strong');
+      rank.className='leaderboard-rank';name.className='leaderboard-name';sc.className='leaderboard-score';
+      rank.textContent='#'+(i+1);name.textContent=row.player||'PLAYER';sc.textContent=pad(Number(row.score)||0,5);
+      li.append(rank,name,sc);listE.appendChild(li);
+    });
+  }catch{
+    listE.textContent='';const li=document.createElement('li');li.className='leaderboard-loading';li.textContent='Leaderboard unavailable';listE.appendChild(li);
+  }
+}
+
+async function saveScore(){
+  if(scoreSaved)return;
+  const name=cleanName(leaderNameE.value||playerNameE.value);
+  saveBtn.disabled=true;saveStatus.textContent='Saving…';
+  try{
+    const r=await fetch('/api/leaderboard',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'score',game:'eastmed',player:name,score,level:manualIntercepts,id:runId})});
+    if(!r.ok)throw new Error('save');
+    scoreSaved=true;saveBtn.textContent='SAVED';saveStatus.textContent='Saved ✓';await loadLeaderboard();
+  }catch{saveBtn.disabled=false;saveStatus.textContent='Could not save. Try again.'}
+}
+
+function reset(){
+  score=0;manualIntercepts=0;elapsed=0;last=performance.now();nextThreat=rnd(1.8,3.2);
+  runId=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));
+  incoming=[];interceptors=[];offense=[];explosions=[];ships=[];shipRockets=[];tanks=[];
+  cyprusEvent=false;shipsEvent=false;tanksEvent=false;controlEvent=false;lastShipShot=0;weaponIndex=0;scoreSaved=false;
+  systemE.textContent='READY';hud();
+}
+
+function start(){
+  if(!active())return;
+  cleanName(playerNameE.value);reset();run=true;
+  document.body.classList.remove('pre-game');document.body.classList.add('playing');
+  startPanel.classList.remove('panel-visible');leaderPanel.classList.remove('panel-visible');note('60 SEC · DEFENSE ONLINE');
+}
+
+function end(){
+  if(!run)return;
+  run=false;document.body.classList.remove('playing');document.body.classList.add('pre-game');
+  finalScoreE.textContent=pad(score,5);leaderNameE.value=localStorage.aegeanPlayerName||playerNameE.value||'PLAYER';
+  saveBtn.disabled=false;saveBtn.textContent='SAVE SCORE';saveStatus.textContent='Enter your name and save your score.';
+  leaderPanel.classList.add('panel-visible');loadLeaderboard();setTimeout(()=>leaderNameE.focus(),100);
+}
+
+function update(dt){
+  if(!run)return;
+  elapsed+=dt;triggerTimeline();
+
+  if(elapsed>=nextThreat&&elapsed<58){spawnThreat();nextThreat=elapsed+rnd(elapsed>35?1.6:2.4,elapsed>35?3.0:4.2)}
+
+  for(const m of incoming){if(m.dead)continue;m.p+=m.speed*dt;if(m.p>=.82)autoHit(m)}
+  for(const q of interceptors){
+    q.t+=dt;
+    if(q.t>=q.duration&&!q.done){q.done=true;if(q.target&&!q.target.dead&&q.target.p<.82)manualHit(q.target)}
+  }
+  interceptors=interceptors.filter(q=>q.t<q.duration+.2);
+
+  for(const a of offense)a.p+=a.speed*dt;
+  offense=offense.filter(a=>a.p<1.1);
+
+  if(shipsEvent){
+    for(const s of ships)s.p=Math.min(1,s.p+dt*.045);
+    if(elapsed-lastShipShot>1.2){
+      lastShipShot=elapsed;
+      for(const s of ships){
+        if(s.p>.07){
+          const sx=lerp(mersin.x,960,s.p),sy=lerp(mersin.y+s.lane,500+s.lane*.2,s.p);
+          shipRockets.push({x0:sx,y0:sy,x1:1018+rnd(-15,15),y1:520+rnd(-22,22),p:0,speed:rnd(.45,.62)});
+        }
+      }
+    }
+  }
+  for(const r of shipRockets)r.p+=r.speed*dt;
+  shipRockets=shipRockets.filter(r=>r.p<1.08);
+
+  if(tanksEvent)for(const t of tanks)t.p=Math.min(1,t.p+dt*.035);
+  for(const e of explosions)e.t+=dt;
+  explosions=explosions.filter(e=>e.t<.75);
+  hud();
+  if(elapsed>=60)end();
+}
+
+function poly(points,fill,stroke,width=2){
+  x.beginPath();points.forEach((p,i)=>i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1]));x.closePath();
+  x.fillStyle=fill;x.fill();x.strokeStyle=stroke;x.lineWidth=width;x.stroke();
+}
+
+function label(text,px,py,color='rgba(235,245,255,.7)',size=15){
+  x.fillStyle=color;x.font='800 '+size+'px system-ui';x.fillText(text,px,py);
+}
+
+function drawMap(){
+  const sea=x.createLinearGradient(0,0,0,H);sea.addColorStop(0,'#071b2e');sea.addColorStop(1,'#03101b');x.fillStyle=sea;x.fillRect(0,0,W,H);
+
+  x.strokeStyle='rgba(84,190,225,.08)';x.lineWidth=1;
+  for(let gx=40;gx<W;gx+=80){x.beginPath();x.moveTo(gx,0);x.lineTo(gx,H);x.stroke()}
+  for(let gy=40;gy<H;gy+=80){x.beginPath();x.moveTo(0,gy);x.lineTo(W,gy);x.stroke()}
+
+  poly(turkeyPoly,'rgba(136,48,59,.46)','rgba(255,101,112,.78)');
+  poly(cyprusPoly,cyprusEvent?'rgba(136,48,59,.46)':'rgba(120,130,145,.25)',cyprusEvent?'rgba(255,101,112,.78)':'rgba(190,205,220,.35)');
+  poly(israelPoly,controlEvent?'rgba(136,48,59,.34)':'rgba(55,92,135,.42)',controlEvent?'rgba(255,101,112,.72)':'rgba(112,190,255,.72)');
+
+  label('TÜRKİYE',470,195,'rgba(255,210,214,.82)',20);
+  label(cyprusEvent?'CYPRUS · ARCADE CONTROL':'CYPRUS',680,415,cyprusEvent?'rgba(255,180,188,.85)':'rgba(205,220,230,.55)',11);
+  label(controlEvent?'ISRAEL · ARCADE CONTROL':'ISRAEL',985,638,controlEvent?'rgba(255,180,188,.85)':'rgba(180,215,245,.76)',13);
+  label('E A S T E R N   M E D I T E R R A N E A N',410,535,'rgba(105,230,255,.18)',13);
+
+  x.fillStyle='#e93b48';x.beginPath();x.arc(defenseBase.x,defenseBase.y,7,0,Math.PI*2);x.fill();
+  label('AIR DEFENSE',defenseBase.x-42,defenseBase.y-14,'rgba(255,220,224,.75)',10);
+  x.fillStyle='#ef3340';x.beginPath();x.arc(mersin.x,mersin.y,5,0,Math.PI*2);x.fill();
+  label('MERSIN',mersin.x-27,mersin.y+23,'rgba(255,220,224,.65)',10);
+}
+
+function drawIncoming(){
+  for(const m of incoming){
+    if(m.dead)continue;
+    const p=missilePos(m),q=missilePos({...m,p:Math.max(0,m.p-.035)});
+    x.strokeStyle='rgba(255,169,77,.55)';x.lineWidth=2;x.beginPath();x.moveTo(q.x,q.y);x.lineTo(p.x,p.y);x.stroke();
+    x.shadowColor='#ff9e3d';x.shadowBlur=12;x.fillStyle='#ff9e3d';x.beginPath();x.arc(p.x,p.y,4,0,Math.PI*2);x.fill();x.shadowBlur=0;
+  }
+
+  for(const q of interceptors){
+    const target=q.target&&!q.target.dead?missilePos(q.target):{x:defenseBase.x+90,y:defenseBase.y+40};
+    const t=Math.min(1,q.t/q.duration),px=lerp(q.x0,target.x,t),py=lerp(q.y0,target.y,t);
+    x.strokeStyle='rgba(105,230,255,.65)';x.lineWidth=2;x.beginPath();x.moveTo(q.x0,q.y0);x.lineTo(px,py);x.stroke();
+    x.fillStyle='#69e6ff';x.beginPath();x.arc(px,py,3.5,0,Math.PI*2);x.fill();
+  }
+}
+
+function drawOffense(){
+  for(const a of offense){
+    const t=a.p,px=lerp(a.x0,a.x1,t),base=lerp(a.y0,a.y1,t),py=base-Math.sin(Math.PI*Math.min(1,t))*120;
+    x.strokeStyle=a.type==='BAYRAKTAR'?'rgba(255,255,255,.4)':'rgba(255,80,90,.48)';
+    x.lineWidth=2;x.beginPath();x.moveTo(a.x0,a.y0);x.lineTo(px,py);x.stroke();
+    x.fillStyle=a.type==='BAYRAKTAR'?'#f2f5f8':'#ef3340';x.fillRect(px-4,py-2,8,4);
+    if(t>=.98)addExplosion(a.x1,a.y1,'#ff665f',.65);
+  }
+
+  for(const r of shipRockets){
+    const px=lerp(r.x0,r.x1,r.p),py=lerp(r.y0,r.y1,r.p)-Math.sin(Math.PI*Math.min(1,r.p))*55;
+    x.strokeStyle='rgba(255,99,89,.42)';x.lineWidth=1.5;x.beginPath();x.moveTo(r.x0,r.y0);x.lineTo(px,py);x.stroke();
+    x.fillStyle='#ff6d5e';x.fillRect(px-3,py-1.5,6,3);
+  }
+}
+
+function drawShips(){
+  for(const s of ships){
+    const px=lerp(mersin.x,955,s.p),py=lerp(mersin.y+s.lane,500+s.lane*.2,s.p);
+    x.save();x.translate(px,py);x.fillStyle='#d9e8ef';x.fillRect(-12,-3,24,6);x.fillStyle='#7d9fb3';x.fillRect(-4,-8,8,5);x.restore();
+  }
+}
+
+function drawTanks(){
+  for(const t of tanks){
+    const p=Math.max(0,t.p),px=lerp(780,1005,p),py=lerp(300+t.lane,525+t.lane*.25,p);
+    x.save();x.translate(px,py);x.rotate(.55);x.fillStyle='#b5c0a2';x.fillRect(-8,-5,16,10);x.fillRect(0,-2,11,3);x.restore();
+  }
+}
+
+function drawExplosions(){
+  for(const e of explosions){
+    const k=e.t/.75,r=(8+32*k)*e.size;
+    x.globalAlpha=Math.max(0,1-k);x.strokeStyle=e.color;x.lineWidth=4;x.beginPath();x.arc(e.x,e.y,r,0,Math.PI*2);x.stroke();
+    x.globalAlpha=.55*(1-k);x.fillStyle=e.color;x.beginPath();x.arc(e.x,e.y,r*.35,0,Math.PI*2);x.fill();
+  }
+  x.globalAlpha=1;
+}
+
+function draw(t){
+  drawMap();drawIncoming();drawOffense();drawShips();drawTanks();drawExplosions();
+
+  if(run){
+    x.fillStyle='rgba(255,255,255,.72)';x.font='900 13px ui-monospace,monospace';
+    x.fillText('SPACE = INTERCEPT + LAUNCH',38,H-32);
+    const pct=Math.min(1,elapsed/60);
+    x.fillStyle='rgba(255,255,255,.08)';x.fillRect(38,H-20,W-76,5);
+    x.fillStyle='#ef3340';x.fillRect(38,H-20,(W-76)*pct,5);
+  }
+
+  const v=x.createRadialGradient(W/2,H/2,120,W/2,H/2,W*.7);v.addColorStop(0,'transparent');v.addColorStop(1,'rgba(0,0,0,.48)');x.fillStyle=v;x.fillRect(0,0,W,H);
+}
+
+function loop(t){
+  const dt=Math.min(.05,(t-last)/1000||0);last=t;
+  if(active())update(dt);
+  draw(t);requestAnimationFrame(loop);
+}
+
+document.addEventListener('keydown',e=>{
+  if(!active())return;
+  if(e.code==='Space'){
+    e.preventDefault();
+    if(run)fire();
+    else if(startPanel.classList.contains('panel-visible'))start();
+  }
+},{passive:false});
+
+startBtn.onclick=start;
+againBtn.onclick=start;
+saveBtn.onclick=saveScore;
+leaderNameE.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveScore()}});
+loadLeaderboard();hud();requestAnimationFrame(loop);
+})();
