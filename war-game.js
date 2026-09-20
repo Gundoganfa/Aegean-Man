@@ -182,7 +182,11 @@ function start(){
   if(!active())return;
   cleanName(playerNameE.value);reset();run=true;
   document.body.classList.remove('pre-game');document.body.classList.add('playing');
-  startPanel.classList.remove('panel-visible');leaderPanel.classList.remove('panel-visible');note('60 SEC · DEFENSE ONLINE');
+  startPanel.classList.remove('panel-visible');
+  leaderPanel.classList.remove('panel-visible');
+  leaderPanel.style.opacity='';
+  leaderPanel.style.pointerEvents='';
+  note('60 SEC · DEFENSE ONLINE');
 }
 
 async function end(){
