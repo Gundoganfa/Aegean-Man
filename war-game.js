@@ -87,8 +87,18 @@ function missilePos(m){
 
 function spawnThreat(){
   const t=turkeyTargets[Math.floor(Math.random()*turkeyTargets.length)];
-  incoming.push({x0:israelLaunch.x+rnd(-14,14),y0:israelLaunch.y+rnd(-8,8),x1:t[0]+rnd(-20,20),y1:t[1]+rnd(-12,12),p:0,speed:rnd(.12,.17),dead:false,auto:false});
-  addExplosion(israelLaunch.x,israelLaunch.y,'#ff9e3d',.48);
+  incoming.push({
+    x0:israelLaunch.x+rnd(-14,14),
+    y0:israelLaunch.y+rnd(-8,8),
+    x1:t.x+rnd(-20,20),
+    y1:t.y+rnd(-12,12),
+    p:0,
+    speed:rnd(.08,.11),
+    arc:rnd(-38,38),
+    dead:false,
+    auto:false
+  });
+  addExplosion(israelLaunch.x,israelLaunch.y,'#ff9e3d',.62);
   note('ISRAEL MISSILE LAUNCH · SPACE TO INTERCEPT');
 }
 
@@ -127,7 +137,7 @@ function fire(){
   if(!run||!active()||window.landscapeBlocked)return;
   const now=performance.now()/1000;if(now-lastFire<.16)return;lastFire=now;
   const launch=launchOffense();
-  const candidates=incoming.filter(m=>!m.dead&&m.p<.82).sort((a,b)=>b.p-a.p);
+  const candidates=incoming.filter(m=>!m.dead&&m.p<.92).sort((a,b)=>b.p-a.p);
   if(!candidates.length){
     systemE.textContent='LAUNCH';
     note(launch.type+' LAUNCHED +'+launch.points);
@@ -234,10 +244,10 @@ function update(dt){
 
   if(elapsed>=nextThreat&&elapsed<58){spawnThreat();nextThreat=elapsed+rnd(elapsed>35?1.6:2.4,elapsed>35?3.0:4.2)}
 
-  for(const m of incoming){if(m.dead)continue;m.p+=m.speed*dt;if(m.p>=.82)autoHit(m)}
+  for(const m of incoming){if(m.dead)continue;m.p+=m.speed*dt;if(m.p>=.92)autoHit(m)}
   for(const q of interceptors){
     q.t+=dt;
-    if(q.t>=q.duration&&!q.done){q.done=true;if(q.target&&!q.target.dead&&q.target.p<.82)manualHit(q.target)}
+    if(q.t>=q.duration&&!q.done){q.done=true;if(q.target&&!q.target.dead&&q.target.p<.92)manualHit(q.target)}
   }
   interceptors=interceptors.filter(q=>q.t<q.duration+.2);
 
@@ -606,7 +616,7 @@ function drawExplosions(){
 }
 
 function draw(t){
-  drawMap();drawWestDefenses();drawIncoming();drawOffense();drawShips();drawTanks();drawExplosions();
+  drawMap();drawWestDefenses();drawOffense();drawShips();drawTanks();drawExplosions();drawIncoming();
 
   if(run){
     x.fillStyle='rgba(255,255,255,.72)';x.font='900 13px ui-monospace,monospace';
