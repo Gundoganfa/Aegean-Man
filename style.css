@@ -309,3 +309,53 @@ footer { display: flex; justify-content: space-between; gap: 18px; color: #60788
   .board-actions { margin-top: 10px; }
   .primary-action, .secondary-action { padding: 10px 14px; }
 }
+
+.score-submit {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+.score-submit label {
+  display: grid;
+  gap: 5px;
+  text-align: left;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+.score-submit input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(105,230,255,.32);
+  border-radius: 10px;
+  background: rgba(255,255,255,.07);
+  color: #fff;
+  outline: none;
+  padding: 10px 12px;
+  font: 800 15px ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.score-submit input:focus {
+  border-color: rgba(105,230,255,.8);
+  box-shadow: 0 0 0 3px rgba(105,230,255,.09);
+}
+.score-submit #scoreSaveStatus {
+  grid-column: 1 / -1;
+  min-height: 15px;
+  color: #86a2b7;
+  font-size: 11px;
+  text-align: left;
+}
+#saveScoreBtn:disabled {
+  opacity: .65;
+  cursor: default;
+}
+@media (max-width: 560px) {
+  .score-submit {
+    grid-template-columns: 1fr;
+  }
+  .score-submit #scoreSaveStatus { grid-column: 1; }
+  .score-submit .primary-action { width: 100%; }
+}
