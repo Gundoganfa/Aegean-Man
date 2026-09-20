@@ -120,7 +120,36 @@ function over(){run=0;endPresence();document.body.classList.remove('playing');do
 function next(){level++;score+=1000*level;px=2;py=8;dir=queued='right';makeFlags();makeStorms();hud();note('LEVEL '+pad(level,2)+' · HARDER')}
 function move(){if(!run)return;let q=D[queued];if(open(px+q[0],py+q[1]))dir=queued;let d=D[dir];if(open(px+d[0],py+d[1])){px+=d[0];py+=d[1]}let k=key(px,py);if(flags.has(k)){flags.delete(k);score+=100+level*15;burst(cx(px),cy(py),'#69e6ff');hud();if(!flags.size)next()}for(let s of storms){if(s.a==px&&s.b==py){lives--;burst(cx(px),cy(py),'#ff4d5e');px=2;py=8;if(lives<=0)over();else note('STORM HIT · '+lives+' LIVES LEFT');break}}}
 function stormMove(){for(let s of storms){let opts=Object.keys(D).filter(n=>{let d=D[n];return n!=opp[s.d]&&open(s.a+d[0],s.b+d[1])});if(!opts.length)opts=[opp[s.d]];if(!opts.includes(s.d)||Math.random()<.3)s.d=opts[Math.random()*opts.length|0];let d=D[s.d];if(open(s.a+d[0],s.b+d[1])){s.a+=d[0];s.b+=d[1]}}}
-function map(){if(!geo)return;for(let f of geo.features){let g=f.geometry,p=g.type=='MultiPolygon'?g.coordinates:[g.coordinates];x.beginPath();for(let poly of p)for(let ring of poly)ring.forEach((v,i)=>{let X=(v[0]-19)/12.2*W,Y=(42.5-v[1])/8.3*H;i?x.lineTo(X,Y):x.moveTo(X,Y)});let tr=f.properties.side=='TR';x.fillStyle=tr?'rgba(118,58,68,.28)':'rgba(52,79,110,.28)';x.strokeStyle=tr?'rgba(255,104,112,.42)':'rgba(112,190,255,.42)';x.lineWidth=1;x.fill('evenodd');x.stroke()}x.font='800 13px system-ui';x.fillStyle='rgba(190,220,240,.43)';x.fillText('GREECE',170,290);x.fillText('TÜRKİYE',990,325);x.fillStyle='rgba(105,230,255,.3)';x.fillText('A E G E A N   S E A',525,370)}
+function nearTurkeyIsland(poly){
+  let minLon=Infinity,maxLon=-Infinity,minLat=Infinity,maxLat=-Infinity,sumLon=0,sumLat=0,n=0;
+  for(const ring of poly)for(const v of ring){
+    const lon=v[0],lat=v[1];
+    minLon=Math.min(minLon,lon);maxLon=Math.max(maxLon,lon);
+    minLat=Math.min(minLat,lat);maxLat=Math.max(maxLat,lat);
+    sumLon+=lon;sumLat+=lat;n++;
+  }
+  if(!n)return false;
+  const lon=sumLon/n,lat=sumLat/n;
+  return lon>25.75&&maxLon>25.9&&lat>35.3&&lat<39.6&&(maxLon-minLon)<1.1&&(maxLat-minLat)<.9;
+}
+function map(){
+  if(!geo)return;
+  for(const f of geo.features){
+    const g=f.geometry,polys=g.type=='MultiPolygon'?g.coordinates:[g.coordinates];
+    for(const poly of polys){
+      x.beginPath();
+      for(const ring of poly)ring.forEach((v,i)=>{
+        const X=(v[0]-19)/12.2*W,Y=(42.5-v[1])/8.3*H;
+        i?x.lineTo(X,Y):x.moveTo(X,Y);
+      });
+      const turkeyTone=f.properties.side=='TR'||(f.properties.side=='GR'&&nearTurkeyIsland(poly));
+      x.fillStyle=turkeyTone?'rgba(118,58,68,.28)':'rgba(52,79,110,.28)';
+      x.strokeStyle=turkeyTone?'rgba(255,104,112,.42)':'rgba(112,190,255,.42)';
+      x.lineWidth=1;x.fill('evenodd');x.stroke();
+    }
+  }
+  x.font='800 13px system-ui';x.fillStyle='rgba(190,220,240,.43)';x.fillText('GREECE',170,290);x.fillText('TÜRKİYE',990,325);x.fillStyle='rgba(105,230,255,.3)';x.fillText('A E G E A N   S E A',525,370)
+}
 function greek(a,b,s=1){let q=20*s,z=14*s,A=a-q/2,B=b-z/2;x.save();x.shadowColor='#58b7ff';x.shadowBlur=7;x.fillStyle='white';x.fillRect(A,B,q,z);x.fillStyle='#1769aa';let h=z/9;for(let i=0;i<9;i+=2)x.fillRect(A,B+i*h,q,h+.2);let m=z*5/9;x.fillRect(A,B,m,m);x.fillStyle='white';x.fillRect(A+m*.4,B,m*.2,m);x.fillRect(A,B+m*.4,m,m*.2);x.restore()}
 function star(a,b,r){x.beginPath();for(let i=0;i<10;i++){let q=i%2?r:r*.42,t=-Math.PI/2+i*Math.PI/5,A=a+Math.cos(t)*q,B=b+Math.sin(t)*q;i?x.lineTo(A,B):x.moveTo(A,B)}x.closePath();x.fill()}
 function player(t){x.save();x.translate(cx(px),cy(py));x.rotate(D[dir][2]);let m=.2+Math.abs(Math.sin(t*.012))*.12;x.shadowColor='#ff4452';x.shadowBlur=22;x.beginPath();x.moveTo(0,0);x.arc(0,0,15,m,6.28-m);x.closePath();x.fillStyle='#e92f3c';x.fill();x.rotate(-D[dir][2]);x.fillStyle='white';x.beginPath();x.arc(-2,0,7.3,0,6.28);x.fill();x.fillStyle='#e92f3c';x.beginPath();x.arc(1.3,-.5,6.5,0,6.28);x.fill();x.fillStyle='white';star(6,0,3.5);x.restore()}
