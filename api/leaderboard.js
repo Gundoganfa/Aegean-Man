@@ -8,7 +8,7 @@ const DEFAULT_COPY={
   footer:'Survive. Adapt. Level up anyway.'
 };
 const ADMIN_SALT='aegean-man-admin-v1';
-const ADMIN_VERIFIER='1a7eeafe5e46de06b680f864a132bc4cdd1567f81fc974947927b710e81b0bcb';
+const ADMIN_VERIFIER='cf1978fe9cda6e179384d36afa142fcd04e8a4d51d10445eee3c41e20ab32862';
 
 function cfg(){
   return {
