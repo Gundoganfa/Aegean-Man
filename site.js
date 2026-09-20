@@ -6,11 +6,14 @@ const onlineEls=[...document.querySelectorAll('[data-online-count]')];
 const presenceId=sessionStorage.aegeanPresenceId||(sessionStorage.aegeanPresenceId=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2)));
 let presenceTimer=null;
 const landscapeQuery=matchMedia('(orientation: portrait) and (max-width: 900px)');
-window.landscapeBlocked=landscapeQuery.matches;
+window.landscapeBlocked=false;
 
 function syncLandscapeState(){
-  window.landscapeBlocked=landscapeQuery.matches;
-  document.body.classList.toggle('landscape-blocked',window.landscapeBlocked);
+  const inGame=document.body.dataset.game==='aegean'||document.body.dataset.game==='eastmed';
+  const forced=inGame&&landscapeQuery.matches;
+  window.landscapeBlocked=false;
+  document.body.classList.remove('landscape-blocked');
+  document.body.classList.toggle('force-landscape',forced);
 }
 
 async function requestLandscape(){
@@ -60,6 +63,7 @@ function showGame(name){
   document.body.classList.remove('playing');
   document.body.classList.add('pre-game');
   window.scrollTo({top:0,left:0,behavior:'instant'});
+  syncLandscapeState();
   syncOnline();
 }
 
@@ -80,7 +84,9 @@ document.querySelectorAll('.back-to-picker').forEach(btn=>{
     aegean.hidden=true;
     eastmed.hidden=true;
     picker.hidden=false;
+    document.body.classList.remove('force-landscape');
     window.scrollTo({top:0,left:0,behavior:'instant'});
+    syncLandscapeState();
     syncOnline();
   });
 });
