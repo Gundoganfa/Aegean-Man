@@ -2,6 +2,18 @@ const crypto=require('crypto');
 
 const SCORE_KEY='aegean-man:leaderboard';
 const COPY_KEY='aegean-man:leaderboard:copy';
+
+function gameName(value){
+  return value==='eastmed'?'eastmed':'aegean';
+}
+
+function scoreKey(game){
+  return game==='eastmed'?'aegean-man:leaderboard:eastmed':SCORE_KEY;
+}
+
+function copyKey(game){
+  return game==='eastmed'?'aegean-man:leaderboard:eastmed:copy':COPY_KEY;
+}
 const DEFAULT_COPY={
   title:'AEGEAN CHAMPIONS',
   subtitle:'Top pilots of the boss level.',
@@ -75,10 +87,10 @@ function parseCopy(raw){
   }catch{return DEFAULT_COPY}
 }
 
-async function getBoard(){
+async function getBoard(game='aegean'){
   const out=await redis([
-    ['ZREVRANGE',SCORE_KEY,0,9,'WITHSCORES'],
-    ['GET',COPY_KEY]
+    ['ZREVRANGE',scoreKey(game),0,9,'WITHSCORES'],
+    ['GET',copyKey(game)]
   ]);
   return {
     scores:parseScores(out?.[0]?.result),
@@ -89,13 +101,14 @@ async function getBoard(){
 module.exports=async function handler(req,res){
   res.setHeader('Cache-Control','no-store, max-age=0');
   try{
-    if(req.method==='GET')return res.status(200).json(await getBoard());
+    if(req.method==='GET')return res.status(200).json(await getBoard(gameName(req.query?.game)));
     if(req.method!=='POST'){
       res.setHeader('Allow','GET, POST');
       return res.status(405).json({error:'method not allowed'});
     }
 
     const b=bodyOf(req);
+    const game=gameName(b.game);
 
     if(b.action==='score'){
       const player=clean(b.player,16,'PLAYER');
@@ -103,8 +116,8 @@ module.exports=async function handler(req,res){
       const level=Math.max(1,Math.min(999,Math.floor(Number(b.level)||1)));
       const id=clean(b.id,80,crypto.randomUUID());
       const member=JSON.stringify({player,level,id,at:Date.now()});
-      await redis([['ZADD',SCORE_KEY,score,member]]);
-      return res.status(200).json(await getBoard());
+      await redis([['ZADD',scoreKey(game),score,member]]);
+      return res.status(200).json(await getBoard(game));
     }
 
     if(b.action==='auth'){
@@ -119,8 +132,8 @@ module.exports=async function handler(req,res){
         subtitle:clean(b.subtitle,90,DEFAULT_COPY.subtitle),
         footer:clean(b.footer,90,DEFAULT_COPY.footer)
       };
-      await redis([['SET',COPY_KEY,JSON.stringify(copy)]]);
-      const board=await getBoard();
+      await redis([['SET',copyKey(game),JSON.stringify(copy)]]);
+      const board=await getBoard(game);
       return res.status(200).json(board);
     }
 
