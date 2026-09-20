@@ -14,12 +14,8 @@ async function syncPresence(){
     onlineE.title=data.configured===false?'Live counter needs Redis/KV configuration':'Players active in the last 45 seconds';
   }catch{onlineE.textContent='—'}
 }
-function beginPresence(){syncPresence();if(!presenceTimer)presenceTimer=setInterval(syncPresence,15000)}
-function endPresence(){
-  if(presenceTimer){clearInterval(presenceTimer);presenceTimer=null}
-  try{navigator.sendBeacon('/api/presence',new Blob([JSON.stringify({id:presenceId,leave:true})],{type:'application/json'}))}catch{}
-  setTimeout(syncPresence,350)
-}
+function beginPresence(){window.updateGlobalOnline?.()}
+function endPresence(){window.updateGlobalOnline?.()}
 syncPresence();
 function safePlayerName(){
   const value=(playerNameE.value||'PLAYER').replace(/[^a-zA-Z0-9 _.-]/g,'').trim().slice(0,16)||'PLAYER';
@@ -205,7 +201,6 @@ saveBoardText.onclick=async()=>{
   }catch{alert('Could not save text')}
 };
 loadLeaderboard();
-document.addEventListener('visibilitychange',()=>{if(!run)return;if(document.hidden)endPresence();else beginPresence()});
-window.addEventListener('beforeunload',()=>{if(run)endPresence()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)window.updateGlobalOnline?.()});
 walls();makeFlags();makeStorms();fetch('./aegean-map.json').then(r=>r.json()).then(j=>geo=j).catch(()=>0);requestAnimationFrame(loop);
 })();
