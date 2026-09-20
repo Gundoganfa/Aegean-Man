@@ -95,8 +95,19 @@ function spawnThreat(){
 function launchOffense(){
   const type=weapons[weaponIndex++%weapons.length];
   const s=turkeyLaunches[type];
-  offense.push({type,x0:s.x,y0:s.y,x1:israelTarget.x+rnd(-10,10),y1:israelTarget.y+rnd(-18,18),p:0,speed:type==='BAYRAKTAR'?.18:type==='BALLISTIC'?.34:.26});
-  return type;
+  const points=100;
+  offense.push({
+    type,
+    x0:s.x,y0:s.y,
+    x1:israelTarget.x+rnd(-10,10),
+    y1:israelTarget.y+rnd(-18,18),
+    p:0,
+    speed:type==='BAYRAKTAR'?.16:type==='BALLISTIC'?.28:.22,
+    hit:false
+  });
+  score+=points;
+  hud();
+  return {type,points};
 }
 
 function manualHit(m){
@@ -115,9 +126,13 @@ function autoHit(m){
 function fire(){
   if(!run||!active()||window.landscapeBlocked)return;
   const now=performance.now()/1000;if(now-lastFire<.16)return;lastFire=now;
-  const type=launchOffense();
+  const launch=launchOffense();
   const candidates=incoming.filter(m=>!m.dead&&m.p<.82).sort((a,b)=>b.p-a.p);
-  if(!candidates.length){systemE.textContent='LAUNCH';note(type+' LAUNCHED');return}
+  if(!candidates.length){
+    systemE.textContent='LAUNCH';
+    note(launch.type+' LAUNCHED +'+launch.points);
+    return;
+  }
   const target=candidates[0];
   interceptors.push({target,t:0,duration:.28+rnd(0,.12),x0:defenseBase.x,y0:defenseBase.y});
   systemE.textContent='MANUAL';
@@ -226,8 +241,14 @@ function update(dt){
   }
   interceptors=interceptors.filter(q=>q.t<q.duration+.2);
 
-  for(const a of offense)a.p+=a.speed*dt;
-  offense=offense.filter(a=>a.p<1.1);
+  for(const a of offense){
+    a.p+=a.speed*dt;
+    if(a.p>=.98&&!a.hit){
+      a.hit=true;
+      addExplosion(a.x1,a.y1,'#ff665f',.82);
+    }
+  }
+  offense=offense.filter(a=>a.p<1.08);
 
   if(shipsEvent){
     for(const s of ships)s.p=Math.min(1,s.p+dt*.045);
@@ -486,18 +507,78 @@ function drawIncoming(){
 }
 
 function drawOffense(){
+  const pulse=.65+.35*Math.sin(performance.now()*.014);
+
   for(const a of offense){
-    const t=a.p,px=lerp(a.x0,a.x1,t),base=lerp(a.y0,a.y1,t),py=base-Math.sin(Math.PI*Math.min(1,t))*120;
-    x.strokeStyle=a.type==='BAYRAKTAR'?'rgba(255,255,255,.4)':'rgba(255,80,90,.48)';
-    x.lineWidth=2;x.beginPath();x.moveTo(a.x0,a.y0);x.lineTo(px,py);x.stroke();
-    x.fillStyle=a.type==='BAYRAKTAR'?'#f2f5f8':'#ef3340';x.fillRect(px-4,py-2,8,4);
-    if(t>=.98)addExplosion(a.x1,a.y1,'#ff665f',.65);
+    const t=Math.min(1,a.p);
+    const px=lerp(a.x0,a.x1,t);
+    const base=lerp(a.y0,a.y1,t);
+    const arc=a.type==='BALLISTIC'?170:a.type==='CRUISE'?90:65;
+    const py=base-Math.sin(Math.PI*t)*arc;
+
+    const prevT=Math.max(0,t-.075);
+    const qx=lerp(a.x0,a.x1,prevT);
+    const qBase=lerp(a.y0,a.y1,prevT);
+    const qy=qBase-Math.sin(Math.PI*prevT)*arc;
+    const ang=Math.atan2(py-qy,px-qx);
+
+    const isDrone=a.type==='BAYRAKTAR';
+    const core=isDrone?'#f7fbff':'#ff5c62';
+    const glow=isDrone?'#69e6ff':'#ff3344';
+
+    x.save();
+    x.lineCap='round';
+    x.shadowColor=glow;
+    x.shadowBlur=22;
+
+    // Fat glow trail so outgoing launches stay obvious on small screens.
+    x.strokeStyle=isDrone?'rgba(105,230,255,.22)':'rgba(255,51,68,.24)';
+    x.lineWidth=14;
+    x.beginPath();x.moveTo(qx,qy);x.lineTo(px,py);x.stroke();
+
+    x.strokeStyle=isDrone?'rgba(220,252,255,.98)':'rgba(255,190,195,.98)';
+    x.lineWidth=4.5;
+    x.beginPath();x.moveTo(qx,qy);x.lineTo(px,py);x.stroke();
+
+    x.translate(px,py);
+    x.rotate(ang);
+    x.fillStyle=core;
+    if(isDrone){
+      x.fillRect(-8,-2.5,16,5);
+      x.fillRect(-2,-8,4,16);
+    }else{
+      x.beginPath();
+      x.moveTo(14,0);x.lineTo(-8,-6);x.lineTo(-4,0);x.lineTo(-8,6);x.closePath();
+      x.fill();
+    }
+    x.restore();
+
+    x.save();
+    x.strokeStyle=isDrone
+      ?'rgba(105,230,255,'+(0.35+.35*pulse)+')'
+      :'rgba(255,70,80,'+(0.35+.35*pulse)+')';
+    x.lineWidth=2;
+    x.beginPath();x.arc(px,py,13+4*pulse,0,Math.PI*2);x.stroke();
+    x.fillStyle='rgba(245,250,255,.94)';
+    x.font='900 10px ui-monospace,monospace';
+    x.fillText(a.type+' →',px+17,py-10);
+    x.restore();
   }
 
   for(const r of shipRockets){
-    const px=lerp(r.x0,r.x1,r.p),py=lerp(r.y0,r.y1,r.p)-Math.sin(Math.PI*Math.min(1,r.p))*55;
-    x.strokeStyle='rgba(255,99,89,.42)';x.lineWidth=1.5;x.beginPath();x.moveTo(r.x0,r.y0);x.lineTo(px,py);x.stroke();
-    x.fillStyle='#ff6d5e';x.fillRect(px-3,py-1.5,6,3);
+    const t=Math.min(1,r.p);
+    const px=lerp(r.x0,r.x1,t),py=lerp(r.y0,r.y1,t)-Math.sin(Math.PI*t)*55;
+    const pt=Math.max(0,t-.08);
+    const qx=lerp(r.x0,r.x1,pt),qy=lerp(r.y0,r.y1,pt)-Math.sin(Math.PI*pt)*55;
+    x.save();
+    x.lineCap='round';
+    x.shadowColor='#ff6d5e';x.shadowBlur=14;
+    x.strokeStyle='rgba(255,99,89,.3)';x.lineWidth=9;
+    x.beginPath();x.moveTo(qx,qy);x.lineTo(px,py);x.stroke();
+    x.strokeStyle='rgba(255,205,200,.94)';x.lineWidth=3;
+    x.beginPath();x.moveTo(qx,qy);x.lineTo(px,py);x.stroke();
+    x.fillStyle='#fff0ec';x.beginPath();x.arc(px,py,4,0,Math.PI*2);x.fill();
+    x.restore();
   }
 }
 
