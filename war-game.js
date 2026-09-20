@@ -9,18 +9,40 @@ const startPanel=$('warStartPanel'),leaderPanel=$('warLeaderboardPanel'),startBt
 const playerNameE=$('warPlayerName'),finalScoreE=$('warFinalScore'),leaderNameE=$('warLeaderboardName');
 const saveBtn=$('warSaveScoreBtn'),saveStatus=$('warScoreSaveStatus'),listE=$('warLeaderboardList'),againBtn=$('warPlayAgainBtn');
 
-let run=false,score=0,manualIntercepts=0,elapsed=0,last=0,nextThreat=2.5,runId='',scoreSaved=false;
+let run=false,score=0,manualIntercepts=0,elapsed=0,last=0,nextThreat=2.5,runId='',scoreSaved=false,mapGeo=null;
 let incoming=[],interceptors=[],offense=[],explosions=[],ships=[],shipRockets=[],tanks=[];
 let cyprusEvent=false,shipsEvent=false,tanksEvent=false,controlEvent=false,lastShipShot=0,lastFire=-9,weaponIndex=0;
 const weapons=['BAYRAKTAR','BALLISTIC','CRUISE'];
 
 playerNameE.value=localStorage.aegeanPlayerName||'PLAYER';
 
-const turkeyPoly=[[205,155],[355,120],[535,130],[705,116],[850,150],[830,220],[740,245],[655,230],[575,260],[465,250],[360,285],[250,260],[188,213]];
-const cyprusPoly=[[690,354],[747,341],[806,356],[785,381],[718,387],[674,371]];
-const israelPoly=[[985,440],[1038,430],[1070,485],[1052,555],[1018,610],[985,580],[999,520],[972,480]];
-const turkeyTargets=[[370,215],[505,205],[655,190],[760,200],[575,235]];
-const defenseBase={x:650,y:235},mersin={x:665,y:265},israelLaunch={x:1028,y:505};
+const MAP_BOUNDS={minLon:23.0,maxLon:40.8,minLat:29.2,maxLat:42.7,padX:34,padY:28};
+function project(lon,lat){
+  const b=MAP_BOUNDS;
+  return {
+    x:b.padX+(lon-b.minLon)/(b.maxLon-b.minLon)*(W-b.padX*2),
+    y:b.padY+(b.maxLat-lat)/(b.maxLat-b.minLat)*(H-b.padY*2)
+  };
+}
+const geoPoint=(lon,lat)=>project(lon,lat);
+const turkeyTargets=[
+  geoPoint(28.98,41.01),
+  geoPoint(32.86,39.93),
+  geoPoint(27.14,38.42),
+  geoPoint(35.32,37.00),
+  geoPoint(37.38,37.07)
+];
+const defenseBase=geoPoint(32.86,39.20);
+const mersin=geoPoint(34.63,36.80);
+const israelLaunch=geoPoint(34.78,31.95);
+const israelTarget=geoPoint(34.82,32.05);
+const turkeyLaunches={
+  BAYRAKTAR:geoPoint(32.65,39.75),
+  BALLISTIC:geoPoint(34.30,38.70),
+  CRUISE:geoPoint(35.10,37.10)
+};
+const tankStart=geoPoint(36.95,37.05);
+const tankEnd=geoPoint(35.15,32.15);
 
 const pad=(n,k=2)=>String(Math.max(0,Math.floor(n))).padStart(k,'0');
 const lerp=(a,b,t)=>a+(b-a)*t;
@@ -60,9 +82,8 @@ function spawnThreat(){
 
 function launchOffense(){
   const type=weapons[weaponIndex++%weapons.length];
-  const starts={BAYRAKTAR:{x:565,y:205},BALLISTIC:{x:520,y:245},CRUISE:{x:690,y:220}};
-  const s=starts[type];
-  offense.push({type,x0:s.x,y0:s.y,x1:1018+rnd(-10,10),y1:520+rnd(-22,22),p:0,speed:type==='BAYRAKTAR'?.18:type==='BALLISTIC'?.34:.26});
+  const s=turkeyLaunches[type];
+  offense.push({type,x0:s.x,y0:s.y,x1:israelTarget.x+rnd(-10,10),y1:israelTarget.y+rnd(-18,18),p:0,speed:type==='BAYRAKTAR'?.18:type==='BALLISTIC'?.34:.26});
   return type;
 }
 
@@ -177,8 +198,8 @@ function update(dt){
       lastShipShot=elapsed;
       for(const s of ships){
         if(s.p>.07){
-          const sx=lerp(mersin.x,960,s.p),sy=lerp(mersin.y+s.lane,500+s.lane*.2,s.p);
-          shipRockets.push({x0:sx,y0:sy,x1:1018+rnd(-15,15),y1:520+rnd(-22,22),p:0,speed:rnd(.45,.62)});
+          const sx=lerp(mersin.x,israelTarget.x-70,s.p),sy=lerp(mersin.y+s.lane,israelTarget.y+s.lane*.15,s.p);
+          shipRockets.push({x0:sx,y0:sy,x1:israelTarget.x+rnd(-14,14),y1:israelTarget.y+rnd(-18,18),p:0,speed:rnd(.45,.62)});
         }
       }
     }
@@ -193,9 +214,33 @@ function update(dt){
   if(elapsed>=60)end();
 }
 
-function poly(points,fill,stroke,width=2){
-  x.beginPath();points.forEach((p,i)=>i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1]));x.closePath();
-  x.fillStyle=fill;x.fill();x.strokeStyle=stroke;x.lineWidth=width;x.stroke();
+function countryStyle(name){
+  if(name==='Turkey')return {fill:'rgba(136,48,59,.46)',stroke:'rgba(255,101,112,.78)'};
+  if(name==='Cyprus')return cyprusEvent
+    ? {fill:'rgba(136,48,59,.46)',stroke:'rgba(255,101,112,.78)'}
+    : {fill:'rgba(120,130,145,.25)',stroke:'rgba(190,205,220,.35)'};
+  if(name==='Israel')return controlEvent
+    ? {fill:'rgba(136,48,59,.34)',stroke:'rgba(255,101,112,.72)'}
+    : {fill:'rgba(55,92,135,.42)',stroke:'rgba(112,190,255,.72)'};
+  return {fill:'rgba(39,63,82,.28)',stroke:'rgba(126,160,184,.34)'};
+}
+
+function drawCountry(feature){
+  const name=feature.properties?.name||'';
+  const style=countryStyle(name);
+  const polys=feature.geometry.type==='MultiPolygon'?feature.geometry.coordinates:[feature.geometry.coordinates];
+  for(const poly of polys){
+    x.beginPath();
+    for(const ring of poly){
+      ring.forEach((v,i)=>{
+        const p=project(v[0],v[1]);
+        i?x.lineTo(p.x,p.y):x.moveTo(p.x,p.y);
+      });
+      x.closePath();
+    }
+    x.fillStyle=style.fill;x.fill('evenodd');
+    x.strokeStyle=style.stroke;x.lineWidth=name==='Turkey'||name==='Israel'||name==='Cyprus'?1.8:1;x.stroke();
+  }
 }
 
 function label(text,px,py,color='rgba(235,245,255,.7)',size=15){
@@ -209,14 +254,16 @@ function drawMap(){
   for(let gx=40;gx<W;gx+=80){x.beginPath();x.moveTo(gx,0);x.lineTo(gx,H);x.stroke()}
   for(let gy=40;gy<H;gy+=80){x.beginPath();x.moveTo(0,gy);x.lineTo(W,gy);x.stroke()}
 
-  poly(turkeyPoly,'rgba(136,48,59,.46)','rgba(255,101,112,.78)');
-  poly(cyprusPoly,cyprusEvent?'rgba(136,48,59,.46)':'rgba(120,130,145,.25)',cyprusEvent?'rgba(255,101,112,.78)':'rgba(190,205,220,.35)');
-  poly(israelPoly,controlEvent?'rgba(136,48,59,.34)':'rgba(55,92,135,.42)',controlEvent?'rgba(255,101,112,.72)':'rgba(112,190,255,.72)');
+  if(mapGeo)for(const feature of mapGeo.features)drawCountry(feature);
 
-  label('TÜRKİYE',470,195,'rgba(255,210,214,.82)',20);
-  label(cyprusEvent?'CYPRUS · ARCADE CONTROL':'CYPRUS',680,415,cyprusEvent?'rgba(255,180,188,.85)':'rgba(205,220,230,.55)',11);
-  label(controlEvent?'ISRAEL · ARCADE CONTROL':'ISRAEL',985,638,controlEvent?'rgba(255,180,188,.85)':'rgba(180,215,245,.76)',13);
-  label('E A S T E R N   M E D I T E R R A N E A N',410,535,'rgba(105,230,255,.18)',13);
+  const tr=geoPoint(32.2,39.1),cy=geoPoint(33.15,35.15),il=geoPoint(34.7,31.7),sy=geoPoint(37.2,35.0),lb=geoPoint(35.55,33.9),eg=geoPoint(30.1,31.2);
+  label('TÜRKİYE',tr.x,tr.y,'rgba(255,210,214,.82)',20);
+  label(cyprusEvent?'CYPRUS · ARCADE CONTROL':'CYPRUS',cy.x-40,cy.y,cyprusEvent?'rgba(255,180,188,.85)':'rgba(205,220,230,.55)',11);
+  label(controlEvent?'ISRAEL · ARCADE CONTROL':'ISRAEL',il.x-18,il.y,controlEvent?'rgba(255,180,188,.85)':'rgba(180,215,245,.76)',13);
+  label('SYRIA',sy.x,sy.y,'rgba(185,205,220,.42)',10);
+  label('LEBANON',lb.x-10,lb.y,'rgba(185,205,220,.42)',9);
+  label('EGYPT',eg.x,eg.y,'rgba(185,205,220,.38)',11);
+  label('E A S T E R N   M E D I T E R R A N E A N',430,525,'rgba(105,230,255,.18)',13);
 
   x.fillStyle='#e93b48';x.beginPath();x.arc(defenseBase.x,defenseBase.y,7,0,Math.PI*2);x.fill();
   label('AIR DEFENSE',defenseBase.x-42,defenseBase.y-14,'rgba(255,220,224,.75)',10);
@@ -258,14 +305,14 @@ function drawOffense(){
 
 function drawShips(){
   for(const s of ships){
-    const px=lerp(mersin.x,955,s.p),py=lerp(mersin.y+s.lane,500+s.lane*.2,s.p);
+    const px=lerp(mersin.x,israelTarget.x-70,s.p),py=lerp(mersin.y+s.lane,israelTarget.y+s.lane*.15,s.p);
     x.save();x.translate(px,py);x.fillStyle='#d9e8ef';x.fillRect(-12,-3,24,6);x.fillStyle='#7d9fb3';x.fillRect(-4,-8,8,5);x.restore();
   }
 }
 
 function drawTanks(){
   for(const t of tanks){
-    const p=Math.max(0,t.p),px=lerp(780,1005,p),py=lerp(300+t.lane,525+t.lane*.25,p);
+    const p=Math.max(0,t.p),px=lerp(tankStart.x,tankEnd.x,p),py=lerp(tankStart.y+t.lane,tankEnd.y+t.lane*.2,p);
     x.save();x.translate(px,py);x.rotate(.55);x.fillStyle='#b5c0a2';x.fillRect(-8,-5,16,10);x.fillRect(0,-2,11,3);x.restore();
   }
 }
@@ -312,5 +359,5 @@ startBtn.onclick=start;
 againBtn.onclick=start;
 saveBtn.onclick=saveScore;
 leaderNameE.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveScore()}});
-loadLeaderboard();hud();requestAnimationFrame(loop);
+fetch('./eastmed-map.json').then(r=>r.json()).then(j=>mapGeo=j).catch(()=>0);loadLeaderboard();hud();requestAnimationFrame(loop);
 })();
