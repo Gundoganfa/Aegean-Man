@@ -9,7 +9,26 @@
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-  <main class="shell">
+  <section id="gamePicker" class="game-picker" aria-label="Choose a game">
+    <div class="picker-card">
+      <div class="badge">ARCADE COLLECTION</div>
+      <h1>CHOOSE YOUR <span>BOSS LEVEL</span></h1>
+      <p>Two fictional arcade games. Pick a scenario and jump in.</p>
+      <div class="game-choices">
+        <button class="game-choice" data-game-choice="aegean">
+          <strong>AEGEAN-MAN</strong>
+          <span>Maze · flags · storms · high score</span>
+        </button>
+        <button class="game-choice war-choice" data-game-choice="eastmed">
+          <strong>EAST MED · 60 SEC</strong>
+          <span>Defense timing · intercepts · scripted arcade events</span>
+        </button>
+      </div>
+      <small>Fictional arcade scenarios · not military simulations or predictions.</small>
+    </div>
+  </section>
+
+  <main id="aegeanGame" class="shell game-app" hidden>
     <header class="topbar">
       <div>
         <div class="eyebrow">ARCADE PARODY · HARD MODE</div>
@@ -98,6 +117,79 @@
       <span>© Aegean-Man · Built for fun</span>
     </footer>
   </main>
+
+  <main id="eastmedGame" class="shell game-app war-app" hidden>
+    <header class="topbar war-topbar">
+      <div>
+        <div class="eyebrow">FICTIONAL ARCADE SCENARIO · 60 SECONDS</div>
+        <h1>EAST MED <span>DEFENSE</span></h1>
+      </div>
+      <div class="hud war-hud" aria-live="polite">
+        <div><small>SCORE</small><strong id="warScore">00000</strong></div>
+        <div><small>TIME</small><strong id="warTime">60</strong></div>
+        <div><small>INTERCEPTS</small><strong id="warIntercepts">00</strong></div>
+        <div><small>THREATS</small><strong id="warThreats">00</strong></div>
+        <div><small>SYSTEM</small><strong id="warSystem">READY</strong></div>
+      </div>
+    </header>
+
+    <section class="game-frame war-frame">
+      <canvas id="warGame" width="1280" height="720" aria-label="Fictional Eastern Mediterranean arcade defense game"></canvas>
+      <div class="scanlines" aria-hidden="true"></div>
+
+      <div id="warStartPanel" class="panel panel-visible">
+        <div class="panel-card">
+          <div class="badge">60 SECOND ARCADE</div>
+          <h2>Protect the border. Beat the clock.</h2>
+          <p>Incoming missiles appear at random. Press <strong>SPACE</strong> early to launch an interceptor and score before the automatic defense system takes over.</p>
+          <label class="player-field">PLAYER NAME
+            <input id="warPlayerName" maxlength="16" autocomplete="nickname" spellcheck="false" placeholder="PLAYER" />
+          </label>
+          <div class="keys"><kbd>SPACE</kbd><span>intercept / launch arcade asset</span></div>
+          <button id="warStartBtn" class="primary-action">START 60 SEC</button>
+          <button class="secondary-action back-to-picker" type="button">BACK TO GAMES</button>
+          <small>Scripted fiction. Map events and unit movements are game effects, not claims about real-world outcomes.</small>
+        </div>
+      </div>
+
+      <div id="warLeaderboardPanel" class="panel">
+        <div class="panel-card leaderboard-card">
+          <div class="badge">MISSION COMPLETE</div>
+          <h2>EAST MED LEADERBOARD</h2>
+          <p>Early manual interceptions earn the most points.</p>
+
+          <div class="final-score"><span>YOUR SCORE</span><strong id="warFinalScore">00000</strong></div>
+
+          <div class="score-submit">
+            <label>YOUR NAME
+              <input id="warLeaderboardName" maxlength="16" autocomplete="nickname" spellcheck="false" placeholder="PLAYER" />
+            </label>
+            <button id="warSaveScoreBtn" class="primary-action">SAVE SCORE</button>
+            <span id="warScoreSaveStatus" aria-live="polite"></span>
+          </div>
+
+          <ol id="warLeaderboardList" class="leaderboard-list">
+            <li class="leaderboard-loading">Loading leaderboard…</li>
+          </ol>
+
+          <div class="board-actions">
+            <button id="warPlayAgainBtn" class="primary-action">PLAY AGAIN</button>
+            <button class="secondary-action back-to-picker" type="button">BACK TO GAMES</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="warMessage" class="message"></div>
+    </section>
+
+    <footer>
+      <span>Fictional arcade map · deliberately non-operational</span>
+      <span>© Aegean-Man Arcade Collection</span>
+    </footer>
+  </main>
+
+  <script src="./site.js" defer></script>
   <script src="./game.js" defer></script>
+  <script src="./war-game.js" defer></script>
 </body>
 </html>
