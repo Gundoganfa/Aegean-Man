@@ -11,7 +11,7 @@ const saveBtn=$('warSaveScoreBtn'),saveStatus=$('warScoreSaveStatus'),listE=$('w
 
 let run=false,score=0,manualIntercepts=0,elapsed=0,last=0,nextThreat=2.5,runId='',scoreSaved=false,mapGeo=null,aegeanGeo=null;
 let incoming=[],interceptors=[],offense=[],explosions=[],ships=[],shipRockets=[],tanks=[];
-let cyprusEvent=false,shipsEvent=false,tanksEvent=false,controlEvent=false,lastShipShot=0,lastFire=-9,weaponIndex=0;
+let westDefenseEvent=false,cyprusEvent=false,shipsEvent=false,tanksEvent=false,controlEvent=false,lastShipShot=0,lastFire=-9,weaponIndex=0;
 const weapons=['BAYRAKTAR','BALLISTIC','CRUISE'];
 
 playerNameE.value=localStorage.aegeanPlayerName||'PLAYER';
@@ -43,6 +43,17 @@ const turkeyLaunches={
 };
 const tankStart=geoPoint(36.95,37.05);
 const tankEnd=geoPoint(35.15,32.15);
+
+const westDefenseSites=[
+  {name:'THRACE DEF',type:'air',p:geoPoint(26.75,40.95)},
+  {name:'DARDANELLES DEF',type:'air',p:geoPoint(26.40,40.15)},
+  {name:'AEGEAN DEF',type:'air',p:geoPoint(27.10,38.55)},
+  {name:'SOUTHWEST DEF',type:'air',p:geoPoint(27.45,37.10)},
+  {name:'ISLAND GARRISON',type:'garrison',p:geoPoint(26.15,39.15)},
+  {name:'ISLAND GARRISON',type:'garrison',p:geoPoint(26.10,38.35)},
+  {name:'ISLAND GARRISON',type:'garrison',p:geoPoint(27.00,37.75)},
+  {name:'ISLAND GARRISON',type:'garrison',p:geoPoint(27.25,36.90)}
+];
 
 const pad=(n,k=2)=>String(Math.max(0,Math.floor(n))).padStart(k,'0');
 const lerp=(a,b,t)=>a+(b-a)*t;
@@ -113,6 +124,11 @@ function fire(){
 }
 
 function triggerTimeline(){
+  if(!westDefenseEvent&&elapsed>=5){
+    westDefenseEvent=true;
+    systemE.textContent='WEST DEF';
+    note('5 SEC · WESTERN DEFENSES ACTIVE');
+  }
   if(!cyprusEvent&&elapsed>=10){cyprusEvent=true;note('10 SEC · CYPRUS ARCADE EVENT')}
   if(!shipsEvent&&elapsed>=20){
     shipsEvent=true;
@@ -158,7 +174,7 @@ function reset(){
   score=0;manualIntercepts=0;elapsed=0;last=performance.now();nextThreat=rnd(.8,1.4);
   runId=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));
   incoming=[];interceptors=[];offense=[];explosions=[];ships=[];shipRockets=[];tanks=[];
-  cyprusEvent=false;shipsEvent=false;tanksEvent=false;controlEvent=false;lastShipShot=0;weaponIndex=0;scoreSaved=false;
+  westDefenseEvent=false;cyprusEvent=false;shipsEvent=false;tanksEvent=false;controlEvent=false;lastShipShot=0;weaponIndex=0;scoreSaved=false;
   systemE.textContent='READY';hud();
 }
 
@@ -342,6 +358,58 @@ function drawMap(){
   label('MERSIN',mersin.x-27,mersin.y+23,'rgba(255,220,224,.65)',10);
 }
 
+function drawWestDefenses(){
+  if(!westDefenseEvent)return;
+
+  const pulse=.58+.42*Math.sin(performance.now()*.006);
+
+  for(const site of westDefenseSites){
+    const p=site.p;
+
+    if(site.type==='air'){
+      x.save();
+      x.strokeStyle='rgba(105,230,255,'+(0.28+.34*pulse)+')';
+      x.lineWidth=2;
+      x.beginPath();x.arc(p.x,p.y,18+5*pulse,0,Math.PI*2);x.stroke();
+
+      x.fillStyle='rgba(105,230,255,.92)';
+      x.beginPath();x.arc(p.x,p.y,5,0,Math.PI*2);x.fill();
+
+      x.strokeStyle='rgba(210,250,255,.88)';
+      x.lineWidth=2;
+      x.beginPath();x.moveTo(p.x,p.y-11);x.lineTo(p.x,p.y+11);x.moveTo(p.x-11,p.y);x.lineTo(p.x+11,p.y);x.stroke();
+
+      x.fillStyle='rgba(210,245,255,.86)';
+      x.font='900 9px ui-monospace,monospace';
+      x.fillText('AIR DEF',p.x+12,p.y-12);
+      x.restore();
+    } else {
+      x.save();
+      x.fillStyle='rgba(230,236,214,.92)';
+      x.fillRect(p.x-5,p.y-5,10,10);
+      x.strokeStyle='rgba(255,255,255,.72)';
+      x.lineWidth=1.5;
+      x.strokeRect(p.x-8,p.y-8,16,16);
+      x.fillStyle='rgba(235,242,226,.78)';
+      x.font='900 8px ui-monospace,monospace';
+      x.fillText('GARRISON',p.x+10,p.y+3);
+      x.restore();
+    }
+  }
+
+  const a=geoPoint(26.1,40.95),b=geoPoint(27.55,36.75);
+  x.save();
+  x.setLineDash([8,8]);
+  x.strokeStyle='rgba(105,230,255,.24)';
+  x.lineWidth=2;
+  x.beginPath();x.moveTo(a.x,a.y);x.lineTo(b.x,b.y);x.stroke();
+  x.setLineDash([]);
+  x.fillStyle='rgba(170,232,245,.64)';
+  x.font='900 10px ui-monospace,monospace';
+  x.fillText('WESTERN DEFENSE LINE · HOLD',a.x+8,(a.y+b.y)/2);
+  x.restore();
+}
+
 function drawIncoming(){
   const pulse=.65+.35*Math.sin(performance.now()*.012);
 
@@ -453,7 +521,7 @@ function drawExplosions(){
 }
 
 function draw(t){
-  drawMap();drawIncoming();drawOffense();drawShips();drawTanks();drawExplosions();
+  drawMap();drawWestDefenses();drawIncoming();drawOffense();drawShips();drawTanks();drawExplosions();
 
   if(run){
     x.fillStyle='rgba(255,255,255,.72)';x.font='900 13px ui-monospace,monospace';
