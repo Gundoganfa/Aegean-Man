@@ -440,3 +440,72 @@ footer { display: flex; justify-content: space-between; gap: 18px; color: #60788
     top: 10%;
   }
 }
+
+.game-picker {
+  min-height:100dvh;
+  display:grid;
+  place-items:center;
+  padding:24px;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(105,230,255,.1), transparent 30%),
+    radial-gradient(circle at 80% 75%, rgba(239,51,64,.1), transparent 30%);
+}
+.picker-card {
+  width:min(900px,96vw);
+  padding:clamp(26px,5vw,54px);
+  border:1px solid rgba(105,230,255,.25);
+  border-radius:24px;
+  background:rgba(4,14,27,.88);
+  box-shadow:0 28px 100px rgba(0,0,0,.48);
+  text-align:center;
+}
+.picker-card h1 { margin:14px 0 10px; }
+.picker-card p { color:#b7c8d7; }
+.game-choices {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+  margin:24px 0 16px;
+}
+.game-choice {
+  min-height:150px;
+  cursor:pointer;
+  padding:22px;
+  border-radius:18px;
+  border:1px solid rgba(105,230,255,.24);
+  background:linear-gradient(180deg,rgba(7,27,49,.92),rgba(3,13,26,.95));
+  color:white;
+  text-align:left;
+  transition:.2s ease;
+}
+.game-choice:hover { transform:translateY(-2px); border-color:rgba(105,230,255,.55); }
+.game-choice strong { display:block; font-size:clamp(22px,4vw,34px); margin-bottom:8px; }
+.game-choice span { color:#98afc1; line-height:1.4; }
+.war-choice { border-color:rgba(239,51,64,.3); }
+.game-app[hidden], .game-picker[hidden] { display:none !important; }
+
+.war-frame canvas { background:#06101d; }
+.war-topbar .hud { min-width:min(680px,58vw); }
+.war-app .panel-card .secondary-action { margin-left:8px; }
+.war-app .message { top:10%; }
+
+@media (max-width:820px) {
+  .game-choices { grid-template-columns:1fr; }
+  .game-choice { min-height:120px; }
+  .war-topbar .hud { min-width:0; }
+}
+
+@media (orientation:landscape) and (max-height:620px) {
+  body[data-game="eastmed"].playing .war-topbar {
+    position:fixed;
+    top:max(5px, env(safe-area-inset-top));
+    left:50%;
+    transform:translateX(-50%);
+    z-index:20;
+    width:min(94vw,760px);
+    margin:0;
+    pointer-events:none;
+    display:block;
+  }
+  body[data-game="eastmed"].playing .war-topbar > :first-child { display:none; }
+}
