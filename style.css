@@ -540,3 +540,66 @@ footer { display: flex; justify-content: space-between; gap: 18px; color: #60788
 #warLeaderboardPanel.panel-visible {
   z-index:60;
 }
+
+.rotate-overlay {
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  place-items:center;
+  padding:24px;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(30,118,170,.22), transparent 38%),
+    rgba(2,7,14,.97);
+  text-align:center;
+}
+.rotate-card {
+  width:min(420px,92vw);
+  padding:28px 22px;
+  border:1px solid rgba(105,230,255,.32);
+  border-radius:22px;
+  background:rgba(6,19,35,.94);
+  box-shadow:0 24px 90px rgba(0,0,0,.55);
+}
+.rotate-card strong {
+  display:block;
+  margin:10px 0 6px;
+  font-size:clamp(24px,8vw,38px);
+  line-height:.95;
+  letter-spacing:-.03em;
+}
+.rotate-card span {
+  display:block;
+  margin-bottom:18px;
+  color:#9eb3c3;
+}
+.rotate-phone {
+  font-size:58px;
+  line-height:1;
+  color:#69e6ff;
+  animation:rotate-hint 1.7s ease-in-out infinite;
+}
+#landscapeBtn {
+  cursor:pointer;
+  border:0;
+  border-radius:999px;
+  padding:12px 20px;
+  background:linear-gradient(135deg,#ef3340,#ff6b59);
+  color:white;
+  font-weight:900;
+  letter-spacing:.05em;
+}
+@keyframes rotate-hint {
+  0%,100% { transform:rotate(0deg); }
+  50% { transform:rotate(90deg); }
+}
+@media (orientation:portrait) and (max-width:900px) {
+  body[data-game="aegean"] .rotate-overlay,
+  body[data-game="eastmed"] .rotate-overlay {
+    display:grid;
+  }
+  body[data-game="aegean"],
+  body[data-game="eastmed"] {
+    overflow:hidden;
+  }
+}
