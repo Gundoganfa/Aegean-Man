@@ -155,7 +155,7 @@ async function saveScore(){
 }
 
 function reset(){
-  score=0;manualIntercepts=0;elapsed=0;last=performance.now();nextThreat=rnd(1.8,3.2);
+  score=0;manualIntercepts=0;elapsed=0;last=performance.now();nextThreat=rnd(.8,1.4);
   runId=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));
   incoming=[];interceptors=[];offense=[];explosions=[];ships=[];shipRockets=[];tanks=[];
   cyprusEvent=false;shipsEvent=false;tanksEvent=false;controlEvent=false;lastShipShot=0;weaponIndex=0;scoreSaved=false;
@@ -343,18 +343,73 @@ function drawMap(){
 }
 
 function drawIncoming(){
+  const pulse=.65+.35*Math.sin(performance.now()*.012);
+
   for(const m of incoming){
     if(m.dead)continue;
-    const p=missilePos(m),q=missilePos({...m,p:Math.max(0,m.p-.035)});
-    x.strokeStyle='rgba(255,169,77,.55)';x.lineWidth=2;x.beginPath();x.moveTo(q.x,q.y);x.lineTo(p.x,p.y);x.stroke();
-    x.shadowColor='#ff9e3d';x.shadowBlur=12;x.fillStyle='#ff9e3d';x.beginPath();x.arc(p.x,p.y,4,0,Math.PI*2);x.fill();x.shadowBlur=0;
+
+    const p=missilePos(m);
+    const q=missilePos({...m,p:Math.max(0,m.p-.09)});
+    const r=missilePos({...m,p:Math.max(0,m.p-.018)});
+    const ang=Math.atan2(p.y-r.y,p.x-r.x);
+
+    // Bright long trail, deliberately oversized so it stays visible on phones.
+    x.save();
+    x.lineCap='round';
+    x.shadowColor='#ff6b2f';
+    x.shadowBlur=20;
+
+    x.strokeStyle='rgba(255,72,34,.22)';
+    x.lineWidth=13;
+    x.beginPath();x.moveTo(q.x,q.y);x.lineTo(p.x,p.y);x.stroke();
+
+    x.strokeStyle='rgba(255,205,91,.96)';
+    x.lineWidth=4.5;
+    x.beginPath();x.moveTo(q.x,q.y);x.lineTo(p.x,p.y);x.stroke();
+
+    // Missile body / arrow head.
+    x.translate(p.x,p.y);
+    x.rotate(ang);
+    x.fillStyle='#fff2b2';
+    x.beginPath();
+    x.moveTo(13,0);x.lineTo(-8,-6);x.lineTo(-4,0);x.lineTo(-8,6);x.closePath();
+    x.fill();
+    x.restore();
+
+    // Pulsing threat ring and label.
+    x.save();
+    x.strokeStyle='rgba(255,70,40,'+(0.45+.4*pulse)+')';
+    x.lineWidth=2.5;
+    x.beginPath();x.arc(p.x,p.y,15+5*pulse,0,Math.PI*2);x.stroke();
+    x.fillStyle='rgba(255,226,190,.95)';
+    x.font='900 12px ui-monospace,monospace';
+    x.fillText('INCOMING',p.x+18,p.y-12);
+    x.restore();
+  }
+
+  // Make the launch point visibly pulse whenever a threat is in flight.
+  if(incoming.some(m=>!m.dead)){
+    x.save();
+    x.strokeStyle='rgba(255,120,45,'+(0.35+.45*pulse)+')';
+    x.lineWidth=3;
+    x.beginPath();x.arc(israelLaunch.x,israelLaunch.y,12+10*pulse,0,Math.PI*2);x.stroke();
+    x.fillStyle='#ff9e3d';
+    x.beginPath();x.arc(israelLaunch.x,israelLaunch.y,5,0,Math.PI*2);x.fill();
+    x.restore();
   }
 
   for(const q of interceptors){
     const target=q.target&&!q.target.dead?missilePos(q.target):{x:defenseBase.x+90,y:defenseBase.y+40};
     const t=Math.min(1,q.t/q.duration),px=lerp(q.x0,target.x,t),py=lerp(q.y0,target.y,t);
-    x.strokeStyle='rgba(105,230,255,.65)';x.lineWidth=2;x.beginPath();x.moveTo(q.x0,q.y0);x.lineTo(px,py);x.stroke();
-    x.fillStyle='#69e6ff';x.beginPath();x.arc(px,py,3.5,0,Math.PI*2);x.fill();
+    x.save();
+    x.lineCap='round';
+    x.shadowColor='#69e6ff';x.shadowBlur=18;
+    x.strokeStyle='rgba(105,230,255,.34)';x.lineWidth=10;
+    x.beginPath();x.moveTo(q.x0,q.y0);x.lineTo(px,py);x.stroke();
+    x.strokeStyle='rgba(190,249,255,.96)';x.lineWidth=3.5;
+    x.beginPath();x.moveTo(q.x0,q.y0);x.lineTo(px,py);x.stroke();
+    x.fillStyle='#e9feff';x.beginPath();x.arc(px,py,5,0,Math.PI*2);x.fill();
+    x.restore();
   }
 }
 
