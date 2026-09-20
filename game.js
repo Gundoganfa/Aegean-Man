@@ -1,8 +1,8 @@
 (()=>{
 const c=document.getElementById('game'),x=c.getContext('2d'),W=c.width,H=c.height,C=31,R=17,T=36,OX=(W-C*T)/2,OY=(H-R*T)/2;
-const $=id=>document.getElementById(id),scoreE=$('score'),highE=$('highScore'),levelE=$('level'),flagsE=$('flagsLeft'),onlineE=$('onlinePlayers'),panel=$('startPanel'),btn=$('startBtn'),msg=$('message'),playerNameE=$('playerName'),leaderboardPanel=$('leaderboardPanel'),leaderboardList=$('leaderboardList'),leaderboardTitle=$('leaderboardTitle'),leaderboardSubtitle=$('leaderboardSubtitle'),leaderboardFooter=$('leaderboardFooter'),finalScoreE=$('finalScore'),playAgainBtn=$('playAgainBtn'),adminEditBtn=$('adminEditBtn'),adminEditor=$('adminEditor'),titleInput=$('leaderboardTitleInput'),subtitleInput=$('leaderboardSubtitleInput'),footerInput=$('leaderboardFooterInput'),saveBoardText=$('saveLeaderboardText'),cancelBoardEdit=$('cancelLeaderboardEdit');
+const $=id=>document.getElementById(id),scoreE=$('score'),highE=$('highScore'),levelE=$('level'),flagsE=$('flagsLeft'),onlineE=$('onlinePlayers'),panel=$('startPanel'),btn=$('startBtn'),msg=$('message'),playerNameE=$('playerName'),leaderboardPanel=$('leaderboardPanel'),leaderboardList=$('leaderboardList'),leaderboardTitle=$('leaderboardTitle'),leaderboardSubtitle=$('leaderboardSubtitle'),leaderboardFooter=$('leaderboardFooter'),finalScoreE=$('finalScore'),leaderboardNameE=$('leaderboardName'),saveScoreBtn=$('saveScoreBtn'),scoreSaveStatus=$('scoreSaveStatus'),playAgainBtn=$('playAgainBtn'),adminEditBtn=$('adminEditBtn'),adminEditor=$('adminEditor'),titleInput=$('leaderboardTitleInput'),subtitleInput=$('leaderboardSubtitleInput'),footerInput=$('leaderboardFooterInput'),saveBoardText=$('saveLeaderboardText'),cancelBoardEdit=$('cancelLeaderboardEdit');
 const D={left:[-1,0,Math.PI],right:[1,0,0],up:[0,-1,-Math.PI/2],down:[0,1,Math.PI/2]},opp={left:'right',right:'left',up:'down',down:'up'};
-let geo=null,run=0,score=0,level=1,lives=3,hi=+localStorage.aegeanManHigh||0,w=[],flags=new Map,storms=[],dir='right',queued='right',px=2,py=8,last=0,acc=0,particles=[],audioCtx=null,musicTimer=null,musicStep=0,swipeX=0,swipeY=0,swiping=false,presenceTimer=null,runId='',adminPassword='',boardCopy={title:'AEGEAN CHAMPIONS',subtitle:'Top pilots of the boss level.',footer:'Survive. Adapt. Level up anyway.'};
+let geo=null,run=0,score=0,level=1,lives=3,hi=+localStorage.aegeanManHigh||0,w=[],flags=new Map,storms=[],dir='right',queued='right',px=2,py=8,last=0,acc=0,particles=[],audioCtx=null,musicTimer=null,musicStep=0,swipeX=0,swipeY=0,swiping=false,presenceTimer=null,runId='',scoreSaved=false,adminPassword='',boardCopy={title:'AEGEAN CHAMPIONS',subtitle:'Top pilots of the boss level.',footer:'Survive. Adapt. Level up anyway.'};
 const pad=(n,k)=>String(Math.max(0,n|0)).padStart(k,'0'),cx=a=>OX+a*T+T/2,cy=a=>OY+a*T+T/2,key=(a,b)=>a+','+b;
 highE.textContent=pad(hi,5);document.body.classList.add('pre-game');playerNameE.value=localStorage.aegeanPlayerName||'PLAYER';
 const presenceId=sessionStorage.aegeanPresenceId||(sessionStorage.aegeanPresenceId=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2)));
@@ -54,17 +54,39 @@ async function loadLeaderboard(){
   }
 }
 async function submitScore(){
+  if(scoreSaved)return true;
+  const value=(leaderboardNameE.value||playerNameE.value||'PLAYER').replace(/[^a-zA-Z0-9 _.-]/g,'').trim().slice(0,16)||'PLAYER';
+  leaderboardNameE.value=value;
+  playerNameE.value=value;
+  localStorage.aegeanPlayerName=value;
+  saveScoreBtn.disabled=true;
+  scoreSaveStatus.textContent='Saving…';
   try{
-    await fetch('/api/leaderboard',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'score',player:safePlayerName(),score,level,id:runId})});
-  }catch{}
+    const r=await fetch('/api/leaderboard',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'score',player:value,score,level,id:runId})});
+    if(!r.ok)throw new Error('save failed');
+    scoreSaved=true;
+    scoreSaveStatus.textContent='Saved ✓';
+    saveScoreBtn.textContent='SAVED';
+    await loadLeaderboard();
+    return true;
+  }catch{
+    saveScoreBtn.disabled=false;
+    scoreSaveStatus.textContent='Could not save. Try again.';
+    return false;
+  }
 }
 async function finishRun(){
   finalScoreE.textContent=pad(score,5);
-  leaderboardList.textContent='';const loading=document.createElement('li');loading.className='leaderboard-loading';loading.textContent='Updating leaderboard…';leaderboardList.appendChild(loading);
+  leaderboardNameE.value=localStorage.aegeanPlayerName||playerNameE.value||'PLAYER';
+  scoreSaved=false;
+  saveScoreBtn.disabled=false;
+  saveScoreBtn.textContent='SAVE SCORE';
+  scoreSaveStatus.textContent='Enter your name and save your score.';
+  leaderboardList.textContent='';const loading=document.createElement('li');loading.className='leaderboard-loading';loading.textContent='Loading leaderboard…';leaderboardList.appendChild(loading);
   panel.classList.remove('panel-visible');
   leaderboardPanel.classList.add('panel-visible');
-  await submitScore();
   await loadLeaderboard();
+  setTimeout(()=>leaderboardNameE.focus(),120);
 }
 function walls(){w=Array.from({length:R},()=>Array(C).fill(0));for(let i=0;i<C;i++)w[0][i]=w[R-1][i]=1;for(let i=0;i<R;i++)w[i][0]=w[i][C-1]=1;[[5,2,1,4],[5,8,1,6],[9,1,1,5],[9,8,1,3],[9,13,1,3],[13,3,1,4],[13,9,1,6],[17,1,1,4],[17,7,1,4],[17,13,1,3],[21,3,1,5],[21,10,1,5],[25,1,1,5],[25,8,1,6],[3,6,5,1],[11,7,5,1],[19,8,5,1],[23,6,5,1],[2,12,4,1],[7,11,5,1],[14,5,4,1],[18,13,5,1],[26,12,3,1]].forEach(([a,b,q,z])=>{for(let j=b;j<b+z;j++)for(let i=a;i<a+q;i++)w[j][i]=1})}
 const open=(a,b)=>a>0&&b>0&&a<C-1&&b<R-1&&!w[b][a];
@@ -93,7 +115,7 @@ function startMusic(){
   },150);
 }
 function stopMusic(){if(musicTimer){clearInterval(musicTimer);musicTimer=null}}
-function start(){score=0;level=1;lives=3;px=2;py=8;dir=queued='right';runId=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));safePlayerName();walls();makeFlags();makeStorms();hud();run=1;beginPresence();document.body.classList.remove('pre-game');adminEditor.hidden=true;leaderboardPanel.classList.remove('panel-visible');panel.classList.remove('panel-visible');startMusic();note('LEVEL 01 · BOSS MODE')}
+function start(){score=0;level=1;lives=3;scoreSaved=false;px=2;py=8;dir=queued='right';runId=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));safePlayerName();walls();makeFlags();makeStorms();hud();run=1;beginPresence();document.body.classList.remove('pre-game');adminEditor.hidden=true;leaderboardPanel.classList.remove('panel-visible');panel.classList.remove('panel-visible');startMusic();note('LEVEL 01 · BOSS MODE')}
 function over(){run=0;endPresence();document.body.classList.add('pre-game');stopMusic();if(score>hi){hi=score;localStorage.aegeanManHigh=hi}hud();finishRun()}
 function next(){level++;score+=1000*level;px=2;py=8;dir=queued='right';makeFlags();makeStorms();hud();note('LEVEL '+pad(level,2)+' · HARDER')}
 function move(){if(!run)return;let q=D[queued];if(open(px+q[0],py+q[1]))dir=queued;let d=D[dir];if(open(px+d[0],py+d[1])){px+=d[0];py+=d[1]}let k=key(px,py);if(flags.has(k)){flags.delete(k);score+=100+level*15;burst(cx(px),cy(py),'#69e6ff');hud();if(!flags.size)next()}for(let s of storms){if(s.a==px&&s.b==py){lives--;burst(cx(px),cy(py),'#ff4d5e');px=2;py=8;if(lives<=0)over();else note('STORM HIT · '+lives+' LIVES LEFT');break}}}
@@ -127,6 +149,8 @@ c.addEventListener('pointerup',()=>swiping=false,{passive:true});
 c.addEventListener('pointercancel',()=>swiping=false,{passive:true});
 btn.onclick=start;
 playAgainBtn.onclick=start;
+saveScoreBtn.onclick=submitScore;
+leaderboardNameE.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();submitScore()}});
 playerNameE.addEventListener('change',safePlayerName);
 adminEditBtn.onclick=async()=>{
   const password=prompt('Admin password');
