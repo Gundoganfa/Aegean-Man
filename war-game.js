@@ -9,7 +9,7 @@ const startPanel=$('warStartPanel'),leaderPanel=$('warLeaderboardPanel'),startBt
 const playerNameE=$('warPlayerName'),finalScoreE=$('warFinalScore'),leaderNameE=$('warLeaderboardName');
 const saveBtn=$('warSaveScoreBtn'),saveStatus=$('warScoreSaveStatus'),listE=$('warLeaderboardList'),againBtn=$('warPlayAgainBtn');
 
-let run=false,score=0,manualIntercepts=0,elapsed=0,last=0,nextThreat=2.5,runId='',scoreSaved=false,mapGeo=null;
+let run=false,score=0,manualIntercepts=0,elapsed=0,last=0,nextThreat=2.5,runId='',scoreSaved=false,mapGeo=null,aegeanGeo=null;
 let incoming=[],interceptors=[],offense=[],explosions=[],ships=[],shipRockets=[],tanks=[];
 let cyprusEvent=false,shipsEvent=false,tanksEvent=false,controlEvent=false,lastShipShot=0,lastFire=-9,weaponIndex=0;
 const weapons=['BAYRAKTAR','BALLISTIC','CRUISE'];
@@ -77,7 +77,8 @@ function missilePos(m){
 function spawnThreat(){
   const t=turkeyTargets[Math.floor(Math.random()*turkeyTargets.length)];
   incoming.push({x0:israelLaunch.x+rnd(-14,14),y0:israelLaunch.y+rnd(-8,8),x1:t[0]+rnd(-20,20),y1:t[1]+rnd(-12,12),p:0,speed:rnd(.12,.17),dead:false,auto:false});
-  note('INCOMING · SPACE FOR EARLY INTERCEPT');
+  addExplosion(israelLaunch.x,israelLaunch.y,'#ff9e3d',.48);
+  note('ISRAEL MISSILE LAUNCH · SPACE TO INTERCEPT');
 }
 
 function launchOffense(){
@@ -143,7 +144,7 @@ async function loadLeaderboard(){
 }
 
 async function saveScore(){
-  if(scoreSaved)return;
+  if(scoreSaved){await loadLeaderboard();return;}
   const name=cleanName(leaderNameE.value||playerNameE.value);
   saveBtn.disabled=true;saveStatus.textContent='Saving…';
   try{
@@ -168,12 +169,28 @@ function start(){
   startPanel.classList.remove('panel-visible');leaderPanel.classList.remove('panel-visible');note('60 SEC · DEFENSE ONLINE');
 }
 
-function end(){
+async function end(){
   if(!run)return;
-  run=false;document.body.classList.remove('playing');document.body.classList.add('pre-game');
-  finalScoreE.textContent=pad(score,5);leaderNameE.value=localStorage.aegeanPlayerName||playerNameE.value||'PLAYER';
-  saveBtn.disabled=false;saveBtn.textContent='SAVE SCORE';saveStatus.textContent='Enter your name and save your score.';
-  leaderPanel.classList.add('panel-visible');loadLeaderboard();setTimeout(()=>leaderNameE.focus(),100);
+  run=false;
+  document.body.classList.remove('playing');
+  document.body.classList.add('pre-game');
+  startPanel.classList.remove('panel-visible');
+  leaderPanel.classList.add('panel-visible');
+  leaderPanel.style.opacity='1';
+  leaderPanel.style.pointerEvents='auto';
+
+  finalScoreE.textContent=pad(score,5);
+  leaderNameE.value=localStorage.aegeanPlayerName||playerNameE.value||'PLAYER';
+  saveBtn.disabled=false;saveBtn.textContent='SAVE SCORE';
+  saveStatus.textContent='Saving score…';
+
+  await saveScore();
+  await loadLeaderboard();
+
+  requestAnimationFrame(()=>{
+    leaderPanel.scrollIntoView({block:'center',behavior:'instant'});
+    setTimeout(()=>leaderNameE.focus(),80);
+  });
 }
 
 function update(dt){
@@ -211,7 +228,7 @@ function update(dt){
   for(const e of explosions)e.t+=dt;
   explosions=explosions.filter(e=>e.t<.75);
   hud();
-  if(elapsed>=60)end();
+  if(elapsed>=60){elapsed=60;end();}
 }
 
 function countryStyle(name){
@@ -240,6 +257,58 @@ function drawCountry(feature){
     }
     x.fillStyle=style.fill;x.fill('evenodd');
     x.strokeStyle=style.stroke;x.lineWidth=name==='Turkey'||name==='Israel'||name==='Cyprus'?1.8:1;x.stroke();
+
+    if(name==='Cyprus'&&!cyprusEvent){
+      x.save();
+      x.clip('evenodd');
+      const northY=project(33.2,34.97).y;
+      x.fillStyle='rgba(136,48,59,.52)';
+      x.fillRect(0,0,W,northY);
+      x.restore();
+
+      x.strokeStyle='rgba(255,101,112,.72)';
+      x.lineWidth=1.3;
+      x.stroke();
+    }
+  }
+}
+
+function polygonStats(poly){
+  let minLon=Infinity,maxLon=-Infinity,minLat=Infinity,maxLat=-Infinity,sumLon=0,sumLat=0,n=0;
+  for(const ring of poly)for(const v of ring){
+    const lon=v[0],lat=v[1];
+    minLon=Math.min(minLon,lon);maxLon=Math.max(maxLon,lon);
+    minLat=Math.min(minLat,lat);maxLat=Math.max(maxLat,lat);
+    sumLon+=lon;sumLat+=lat;n++;
+  }
+  return n?{lon:sumLon/n,lat:sumLat/n,w:maxLon-minLon,h:maxLat-minLat}:null;
+}
+
+function drawAegeanTurkeyIslands(){
+  if(!aegeanGeo)return;
+  const gr=aegeanGeo.features.find(f=>f.properties?.side==='GR');
+  if(!gr)return;
+  const polys=gr.geometry.type==='MultiPolygon'?gr.geometry.coordinates:[gr.geometry.coordinates];
+
+  for(const poly of polys){
+    const s=polygonStats(poly);
+    if(!s)continue;
+    const easternIsland=s.lon>25.45&&s.lon<29.2&&s.lat>35.0&&s.lat<41.6&&s.w<1.15&&s.h<1.05;
+    if(!easternIsland)continue;
+
+    x.beginPath();
+    for(const ring of poly){
+      ring.forEach((v,i)=>{
+        const p=project(v[0],v[1]);
+        i?x.lineTo(p.x,p.y):x.moveTo(p.x,p.y);
+      });
+      x.closePath();
+    }
+    x.fillStyle='rgba(136,48,59,.52)';
+    x.fill('evenodd');
+    x.strokeStyle='rgba(255,101,112,.82)';
+    x.lineWidth=1.4;
+    x.stroke();
   }
 }
 
@@ -255,10 +324,12 @@ function drawMap(){
   for(let gy=40;gy<H;gy+=80){x.beginPath();x.moveTo(0,gy);x.lineTo(W,gy);x.stroke()}
 
   if(mapGeo)for(const feature of mapGeo.features)drawCountry(feature);
+  drawAegeanTurkeyIslands();
 
-  const tr=geoPoint(32.2,39.1),cy=geoPoint(33.15,35.15),il=geoPoint(34.7,31.7),sy=geoPoint(37.2,35.0),lb=geoPoint(35.55,33.9),eg=geoPoint(30.1,31.2);
+  const tr=geoPoint(32.2,39.1),cy=geoPoint(33.15,35.15),il=geoPoint(34.7,31.7),sy=geoPoint(37.2,35.0),lb=geoPoint(35.55,33.9),eg=geoPoint(30.1,31.2),nc=geoPoint(33.25,35.10);
   label('TÜRKİYE',tr.x,tr.y,'rgba(255,210,214,.82)',20);
   label(cyprusEvent?'CYPRUS · ARCADE CONTROL':'CYPRUS',cy.x-40,cy.y,cyprusEvent?'rgba(255,180,188,.85)':'rgba(205,220,230,.55)',11);
+  if(!cyprusEvent)label('NORTH CYPRUS',nc.x-42,nc.y-5,'rgba(255,180,188,.82)',9);
   label(controlEvent?'ISRAEL · ARCADE CONTROL':'ISRAEL',il.x-18,il.y,controlEvent?'rgba(255,180,188,.85)':'rgba(180,215,245,.76)',13);
   label('SYRIA',sy.x,sy.y,'rgba(185,205,220,.42)',10);
   label('LEBANON',lb.x-10,lb.y,'rgba(185,205,220,.42)',9);
@@ -359,5 +430,7 @@ startBtn.onclick=start;
 againBtn.onclick=start;
 saveBtn.onclick=saveScore;
 leaderNameE.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveScore()}});
-fetch('./eastmed-map.json').then(r=>r.json()).then(j=>mapGeo=j).catch(()=>0);loadLeaderboard();hud();requestAnimationFrame(loop);
+fetch('./eastmed-map.json').then(r=>r.json()).then(j=>mapGeo=j).catch(()=>0);
+fetch('./aegean-map.json').then(r=>r.json()).then(j=>aegeanGeo=j).catch(()=>0);
+loadLeaderboard();hud();requestAnimationFrame(loop);
 })();
