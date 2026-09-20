@@ -33,9 +33,43 @@
           <div class="badge">REAL MAP · UNREAL GAME</div>
           <h2>Welcome to the Aegean boss level.</h2>
           <p>Guide the crescent-and-star runner through the glowing sea lanes, collect every Greek flag token, and dodge the roaming storm cells.</p>
+          <label class="player-field">PLAYER NAME
+            <input id="playerName" maxlength="16" autocomplete="nickname" spellcheck="false" placeholder="PLAYER" />
+          </label>
           <div class="keys"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd><span>or</span><kbd>WASD</kbd><span>· swipe on the map</span></div>
           <button id="startBtn">START GAME</button>
           <small>Arcade parody · no people, no combat · just flags, storms, score and an original synth soundtrack.</small>
+        </div>
+      </div>
+
+      <div id="leaderboardPanel" class="panel">
+        <div class="panel-card leaderboard-card">
+          <div class="badge">RUN COMPLETE</div>
+          <h2 id="leaderboardTitle">AEGEAN CHAMPIONS</h2>
+          <p id="leaderboardSubtitle">Top pilots of the boss level.</p>
+
+          <div class="final-score"><span>YOUR SCORE</span><strong id="finalScore">00000</strong></div>
+
+          <ol id="leaderboardList" class="leaderboard-list">
+            <li class="leaderboard-loading">Loading leaderboard…</li>
+          </ol>
+
+          <p id="leaderboardFooter" class="leaderboard-footer">Survive. Adapt. Level up anyway.</p>
+
+          <div class="board-actions">
+            <button id="playAgainBtn" class="primary-action">PLAY AGAIN</button>
+            <button id="adminEditBtn" class="secondary-action">ADMIN EDIT</button>
+          </div>
+
+          <div id="adminEditor" class="admin-editor" hidden>
+            <label>TITLE<input id="leaderboardTitleInput" maxlength="40" /></label>
+            <label>SUBTITLE<input id="leaderboardSubtitleInput" maxlength="90" /></label>
+            <label>FOOTER<input id="leaderboardFooterInput" maxlength="90" /></label>
+            <div class="admin-actions">
+              <button id="saveLeaderboardText" class="primary-action">SAVE TEXT</button>
+              <button id="cancelLeaderboardEdit" class="secondary-action">CANCEL</button>
+            </div>
+          </div>
         </div>
       </div>
 
