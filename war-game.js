@@ -113,7 +113,7 @@ function autoHit(m){
 }
 
 function fire(){
-  if(!run||!active())return;
+  if(!run||!active()||window.landscapeBlocked)return;
   const now=performance.now()/1000;if(now-lastFire<.16)return;lastFire=now;
   const type=launchOffense();
   const candidates=incoming.filter(m=>!m.dead&&m.p<.82).sort((a,b)=>b.p-a.p);
@@ -540,7 +540,7 @@ function draw(t){
 
 function loop(t){
   const dt=Math.min(.05,(t-last)/1000||0);last=t;
-  if(active())update(dt);
+  if(active()&&!window.landscapeBlocked)update(dt);
   draw(t);requestAnimationFrame(loop);
 }
 
