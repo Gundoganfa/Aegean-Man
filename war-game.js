@@ -402,7 +402,7 @@ function draw(t){
 
   if(run){
     x.fillStyle='rgba(255,255,255,.72)';x.font='900 13px ui-monospace,monospace';
-    x.fillText('SPACE = INTERCEPT + LAUNCH',38,H-32);
+    x.fillText(matchMedia('(pointer:coarse)').matches?'TAP = INTERCEPT + LAUNCH':'SPACE = INTERCEPT + LAUNCH',38,H-32);
     const pct=Math.min(1,elapsed/60);
     x.fillStyle='rgba(255,255,255,.08)';x.fillRect(38,H-20,W-76,5);
     x.fillStyle='#ef3340';x.fillRect(38,H-20,(W-76)*pct,5);
@@ -424,6 +424,12 @@ document.addEventListener('keydown',e=>{
     if(run)fire();
     else if(startPanel.classList.contains('panel-visible'))start();
   }
+},{passive:false});
+
+c.addEventListener('pointerdown',e=>{
+  if(!active()||!run)return;
+  e.preventDefault();
+  fire();
 },{passive:false});
 
 startBtn.onclick=start;
