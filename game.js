@@ -4,7 +4,7 @@ const $=id=>document.getElementById(id),scoreE=$('score'),highE=$('highScore'),l
 const D={left:[-1,0,Math.PI],right:[1,0,0],up:[0,-1,-Math.PI/2],down:[0,1,Math.PI/2]},opp={left:'right',right:'left',up:'down',down:'up'};
 let geo=null,run=0,score=0,level=1,lives=3,hi=+localStorage.aegeanManHigh||0,w=[],flags=new Map,storms=[],dir='right',queued='right',px=2,py=8,last=0,acc=0,particles=[],audioCtx=null,musicTimer=null,musicStep=0,swipeX=0,swipeY=0,swiping=false;
 const pad=(n,k)=>String(Math.max(0,n|0)).padStart(k,'0'),cx=a=>OX+a*T+T/2,cy=a=>OY+a*T+T/2,key=(a,b)=>a+','+b;
-highE.textContent=pad(hi,5);
+highE.textContent=pad(hi,5);document.body.classList.add('pre-game');
 function walls(){w=Array.from({length:R},()=>Array(C).fill(0));for(let i=0;i<C;i++)w[0][i]=w[R-1][i]=1;for(let i=0;i<R;i++)w[i][0]=w[i][C-1]=1;[[5,2,1,4],[5,8,1,6],[9,1,1,5],[9,8,1,3],[9,13,1,3],[13,3,1,4],[13,9,1,6],[17,1,1,4],[17,7,1,4],[17,13,1,3],[21,3,1,5],[21,10,1,5],[25,1,1,5],[25,8,1,6],[3,6,5,1],[11,7,5,1],[19,8,5,1],[23,6,5,1],[2,12,4,1],[7,11,5,1],[14,5,4,1],[18,13,5,1],[26,12,3,1]].forEach(([a,b,q,z])=>{for(let j=b;j<b+z;j++)for(let i=a;i<a+q;i++)w[j][i]=1})}
 const open=(a,b)=>a>0&&b>0&&a<C-1&&b<R-1&&!w[b][a];
 function makeFlags(){flags.clear();for(let b=1;b<R-1;b++)for(let a=1;a<C-1;a++)if(open(a,b)&&!(a==2&&b==8)&&((a*13+b*17)%5==0))flags.set(key(a,b),[a,b,Math.random()*6.28]);flagsE.textContent=pad(flags.size,2)}
@@ -32,8 +32,8 @@ function startMusic(){
   },150);
 }
 function stopMusic(){if(musicTimer){clearInterval(musicTimer);musicTimer=null}}
-function start(){score=0;level=1;lives=3;px=2;py=8;dir=queued='right';walls();makeFlags();makeStorms();hud();run=1;startMusic();panel.classList.remove('panel-visible');note('LEVEL 01 · BOSS MODE')}
-function over(){run=0;stopMusic();if(score>hi){hi=score;localStorage.aegeanManHigh=hi}hud();let q=panel.querySelector('.panel-card');q.querySelector('.badge').textContent='RUN COMPLETE';q.querySelector('h2').textContent='Boss level got you.';q.querySelector('p').textContent='Score '+pad(score,5)+' · Level '+pad(level,2)+'. The Aegean is still waiting.';btn.textContent='PLAY AGAIN';panel.classList.add('panel-visible')}
+function start(){score=0;level=1;lives=3;px=2;py=8;dir=queued='right';walls();makeFlags();makeStorms();hud();run=1;document.body.classList.remove('pre-game');startMusic();panel.classList.remove('panel-visible');note('LEVEL 01 · BOSS MODE')}
+function over(){run=0;document.body.classList.add('pre-game');stopMusic();if(score>hi){hi=score;localStorage.aegeanManHigh=hi}hud();let q=panel.querySelector('.panel-card');q.querySelector('.badge').textContent='RUN COMPLETE';q.querySelector('h2').textContent='Boss level got you.';q.querySelector('p').textContent='Score '+pad(score,5)+' · Level '+pad(level,2)+'. The Aegean is still waiting.';btn.textContent='PLAY AGAIN';panel.classList.add('panel-visible')}
 function next(){level++;score+=1000*level;px=2;py=8;dir=queued='right';makeFlags();makeStorms();hud();note('LEVEL '+pad(level,2)+' · HARDER')}
 function move(){if(!run)return;let q=D[queued];if(open(px+q[0],py+q[1]))dir=queued;let d=D[dir];if(open(px+d[0],py+d[1])){px+=d[0];py+=d[1]}let k=key(px,py);if(flags.has(k)){flags.delete(k);score+=100+level*15;burst(cx(px),cy(py),'#69e6ff');hud();if(!flags.size)next()}for(let s of storms){if(s.a==px&&s.b==py){lives--;burst(cx(px),cy(py),'#ff4d5e');px=2;py=8;if(lives<=0)over();else note('STORM HIT · '+lives+' LIVES LEFT');break}}}
 function stormMove(){for(let s of storms){let opts=Object.keys(D).filter(n=>{let d=D[n];return n!=opp[s.d]&&open(s.a+d[0],s.b+d[1])});if(!opts.length)opts=[opp[s.d]];if(!opts.includes(s.d)||Math.random()<.3)s.d=opts[Math.random()*opts.length|0];let d=D[s.d];if(open(s.a+d[0],s.b+d[1])){s.a+=d[0];s.b+=d[1]}}}
