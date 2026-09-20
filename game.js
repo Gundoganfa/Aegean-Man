@@ -165,7 +165,11 @@ document.addEventListener('keydown',e=>{if(document.body.dataset.game!=='aegean'
 c.addEventListener('pointerdown',e=>{swiping=true;swipeX=e.clientX;swipeY=e.clientY;c.setPointerCapture?.(e.pointerId)},{passive:true});
 c.addEventListener('pointermove',e=>{
   if(!swiping||!run)return;
-  const dx=e.clientX-swipeX,dy=e.clientY-swipeY;
+  let dx=e.clientX-swipeX,dy=e.clientY-swipeY;
+  if(document.body.classList.contains('force-landscape')){
+    const localDx=dy,localDy=-dx;
+    dx=localDx;dy=localDy;
+  }
   if(Math.max(Math.abs(dx),Math.abs(dy))<24)return;
   queued=Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up');
   swipeX=e.clientX;swipeY=e.clientY;
